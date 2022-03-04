@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+
+  flask:
+    # image: 'alexkcode/webhook-flask-listener:latest'
+    build:
+      context: app
+      dockerfile: Dockerfile
+    volumes:
+      - ./app:/app
+    ports:
+      - '5000:5000'
+    # environment:
+    #   MONGODB_DATABASE: flaskdb
+    #   MONGODB_USERNAME: flaskuser
+    #   MONGODB_PASSWORD: your_mongodb_password
+    #   MONGODB_HOSTNAME: mongodb
+    # depends_on:
+    #   - mongodb
