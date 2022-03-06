@@ -1,4 +1,6 @@
-Flask
+flask
+APScheduler
+Flask-APScheduler
+# tweepy==3.10.0
 tweepy
-flask-tweepy
 Flask-PyMongo

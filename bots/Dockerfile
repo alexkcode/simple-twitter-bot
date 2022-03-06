@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3.10
 
 # ENV GROUP_ID=1000 \
 #     USER_ID=1000
@@ -7,14 +7,15 @@ FROM python:3
 
 COPY ./requirements.txt /app/requirements.txt
 
-WORKDIR /bots
+WORKDIR /app
 
-RUN python -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip
 
-RUN pip install pika && \
-    pip install -r requirements.txt
+# RUN pip install -r requirements.txt
 
-RUN pip install gunicorn
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+
+RUN pip3 install gunicorn
 
 COPY . /app
 

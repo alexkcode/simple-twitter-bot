@@ -5,10 +5,10 @@ services:
   flask:
     # image: 'alexkcode/webhook-flask-listener:latest'
     build:
-      context: app
+      context: bots
       dockerfile: Dockerfile
     volumes:
-      - ./app:/app
+      - ./bots:/app
     ports:
       - '5000:5000'
     # environment:

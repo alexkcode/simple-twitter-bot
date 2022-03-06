@@ -1,11 +1,14 @@
 import os
+from flask import Flask
 import pymongo
 import tweepy
 import config
 
-config = config.Config()
-api = config.authorize()
-client = pymongo.MongoClient(db_url)
+# config = config.Config()
+# api = config.authorize()
+# client = pymongo.MongoClient(db_url)
+
+app = Flask(__name__)
 
 def get_new_followers(username):
     ids = []
@@ -40,8 +43,8 @@ def save_followers(username, followers_list):
                     upsert=True)
 
 def get_username(ids):
-    auth.set_access_token(access_token, access_token_secret)
-    api = tweepy.API(auth)
+    # auth.set_access_token(access_token, access_token_secret)
+    # api = tweepy.API(auth)
     user_data = user = api.get_user(ids)
     return user_data.name
 
