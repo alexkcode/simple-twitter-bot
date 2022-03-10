@@ -4,3 +4,5 @@ Flask-APScheduler
 # tweepy==3.10.0
 tweepy
 Flask-PyMongo
+python-dotenv
+gspread
