@@ -4,12 +4,16 @@ import dm_followers
 import config
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
-@app.route("/")
-def index():
-    return ""
+logging.basicConfig(level=logging.DEBUG)
+# logger = logging.getLogger(__name__)
+app.config.from_object('config.Config')
+auth = tweepy.OAuth1UserHandler(app.config['CONSUMER_KEY'], app.config['CONSUMER_SECRET'], callback="oob")
 
 def job():
     try:
@@ -21,7 +25,7 @@ def job():
     # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=job, trigger="interval", seconds=60)
+scheduler.add_job(func=job, trigger="interval", seconds=10)
 scheduler.start()
 
 @app.route("/")

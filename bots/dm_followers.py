@@ -48,6 +48,12 @@ def get_username(ids):
     user_data = user = api.get_user(ids)
     return user_data.name
 
+def generate_dm_text():
+    """
+    Generate DM text based on script from Google Drive
+    """
+    pass
+
 def send_direct_message(api, to_userid):
     first_name = get_username(to_userid).split(' ')[0]
     dm_text = generate_dm_text(first_name)
