@@ -8,8 +8,18 @@ import pymongo
 
 app = Flask(__name__)
 
-# app.config['TW_ATOKEN'] = os.environ['TW_ATOKEN']
-# app.config['TW_ASECRET'] = os.environ['TW_ASECRET']
+def authorize(auth, verifier):
+    access_token, access_token_secret = auth.get_access_token(
+        verifier
+    )
+    api = tweepy.API(auth, wait_on_rate_limit=True)
+    try:
+        api.verify_credentials()
+    except Exception as e:
+        app.logger.error("Error creating API", exc_info=True)
+        raise e
+    app.logger.info("API created")
+    return api
 
 class Config(object):
 
@@ -45,3 +55,5 @@ class Config(object):
         return twitter_lang
 
     
+    # def authorize(consumer_key, consumer_secret, auth, verifier):
+    # auth contains consumer key and secret already
