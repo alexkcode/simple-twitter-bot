@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 def get_new_followers(username):
     ids = []
-    for page in tweepy.Cursor(api.followers_ids, screen_name=username).pages():
+    for page in tweepy.Cursor(api.get_follower_ids, screen_name=username).pages():
         ids.extend(page)
     print(len(ids))
     return ids
