@@ -1,5 +1,5 @@
 from flask import Flask
-import logging, os, tweepy
+import logging, tweepy
 import followers
 import config
 import atexit
@@ -12,7 +12,6 @@ load_dotenv()
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.DEBUG)
-# logger = logging.getLogger(__name__)
 app.config.from_object('config.Config')
 # client = pymongo.MongoClient("mongodb", 27017)
 
