@@ -14,6 +14,7 @@ class Config(object):
     CONSUMER_KEY = os.getenv('CONSUMER_KEY')
     CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
     BEARER_TOKEN = os.getenv('BEARER_TOKEN')
+    EMAIL1 = os.getenv('EMAIL1')
     # make sure to update this!
     CRED_LOCATION = 'service_account_token.json'
 

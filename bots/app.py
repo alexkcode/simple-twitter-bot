@@ -1,7 +1,7 @@
 import flask, os, secrets, gspread
 from flask import Flask, request, g, session, render_template, after_this_request
 import logging, tweepy
-import followers, config, sheets
+import twitter, config, sheets
 import atexit
 import redis
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -61,7 +61,7 @@ def verify_pin(auth, pin, user_id="none"):
 def index():
     g.gc = gspread.service_account(filename=app.config['CRED_LOCATION'])
     sh = g.gc.create("test")
-    # sh.share('email@email.com', perm_type='user', role='writer')
+    sh.share(app.config['EMAIL1'], perm_type='user', role='writer')
     return "OK"
 
 @app.route("/authorize/", methods=['GET', 'POST'])
