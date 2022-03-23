@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 
 */testaccounts.txt
+*/client_secret*.json
