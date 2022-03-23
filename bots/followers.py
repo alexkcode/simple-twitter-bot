@@ -1,6 +1,5 @@
 import os
 from flask import Flask
-import pymongo
 import tweepy
 import config
 
@@ -10,18 +9,18 @@ import config
 
 app = Flask(__name__)
 
-def get_new_followers(username):
+def get_new_followers(user_id, api:tweepy.API):
     ids = []
-    for page in tweepy.Cursor(api.get_follower_ids, screen_name=username).pages():
+    for page in tweepy.Cursor(api.get_follower_ids, user_id=user_id).pages():
         ids.extend(page)
     print(len(ids))
     return ids
 
 def seed_db(username):
-    o = get_old_followers(username)
-    if not o:
-        n = get_new_followers(username)
-        save_followers(username, n)
+    old = get_old_followers(username)
+    if not old:
+        new = get_new_followers(username)
+        save_followers(username, new)
 
 def get_old_followers(username):
     ids = []

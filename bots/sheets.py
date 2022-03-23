@@ -1,18 +1,23 @@
-import gspread
+import gspread, redis
 import pandas as pd
 import os
+from flask import Flask, request, g, session
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.errors import HttpError
+# from googleapiclient.errors import HttpError
 
 app = Flask(__name__)
+app.config.from_object('config.Config')
 
 # location of google oauth credentials
-CRED_LOCATION = ''
+CRED_LOCATION = app.config['CRED_LOCATION']
 TOKEN_LOCATION = 'token.json'
-SCOPES = app.config['SCOPES']
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
 
 def create_token():
     creds = None
@@ -26,17 +31,15 @@ def create_token():
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
                 CRED_LOCATION, SCOPES)
-            creds = flow.run_local_server(port=5000)
+            creds = flow.run_local_server(port=8000)
         # Save the credentials for the next run
         with open(TOKEN_LOCATION, 'w') as token:
             token.write(creds.to_json())
 
-def read_config():
-    gc = gspread.oauth(
-        credentials_filename=CRED_LOCATION,
-        authorized_user_filename=TOKEN_LOCATION
-    )
-
-    sht1 = gc.open('Frakture SMS Raw Import')
-    pass
+def gspread_auth():
+    with app.app_context():
+        g.gc = gspread.service_account(filename=CRED_LOCATION)
+        # g.gc = gspread.oauth(
+        #     credentials_filename=CRED_LOCATION,
+        #     authorized_user_filename=TOKEN_LOCATION)
 

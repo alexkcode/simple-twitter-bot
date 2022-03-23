@@ -6,4 +6,8 @@ tweepy
 # Flask-PyMongo
 redis
 python-dotenv
+pandas
+google-auth
+google-auth-oauthlib
+google
 gspread
