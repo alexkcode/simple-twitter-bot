@@ -15,7 +15,7 @@ class Config(object):
     CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
     BEARER_TOKEN = os.getenv('BEARER_TOKEN')
     # make sure to update this!
-    CRED_LOCATION = '*.json'
+    CRED_LOCATION = 'service_account_token.json'
 
     SCOPES = [
         'https://www.googleapis.com/auth/spreadsheets.readonly',

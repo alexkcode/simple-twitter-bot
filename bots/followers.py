@@ -2,10 +2,7 @@ import os
 from flask import Flask
 import tweepy
 import config
-
-# config = config.Config()
-# api = config.authorize()
-# client = pymongo.MongoClient(db_url)
+from app import get_db
 
 app = Flask(__name__)
 
@@ -24,7 +21,7 @@ def seed_db(username):
 
 def get_old_followers(username):
     ids = []
-    db = client.get_default_database()
+    db = get_db()
     coll = db["followers"]
     try:
         for i in coll.find({"username":username}):
@@ -35,7 +32,7 @@ def get_old_followers(username):
     return ids
 
 def save_followers(username, followers_list):
-    db = client.get_default_database()
+    db = get_db()
     coll = db["followers"]
     coll.update_one({"username":username},
                     {"$set": {"username":username, "followers":followers_list}},

@@ -38,8 +38,7 @@ def create_token():
 
 def gspread_auth():
     with app.app_context():
-        g.gc = gspread.service_account(filename=CRED_LOCATION)
-        # g.gc = gspread.oauth(
-        #     credentials_filename=CRED_LOCATION,
-        #     authorized_user_filename=TOKEN_LOCATION)
+        if not 'gc' in g:
+            g.gc = gspread.service_account(filename=CRED_LOCATION)
+        return g.gc
 
