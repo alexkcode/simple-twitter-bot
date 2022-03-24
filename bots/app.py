@@ -1,4 +1,5 @@
 import flask, os, secrets, gspread
+from datetime import datetime
 from flask import Flask, request, g, session, render_template, after_this_request
 import logging, tweepy
 import twitter, config, sheets
@@ -26,6 +27,11 @@ def get_auth():
             os.getenv('CONSUMER_SECRET'),
             callback="oob")
     return g.auth
+
+def get_gc():
+    if not 'gc' in g:
+        g.gc = gspread.service_account(filename=app.config['CRED_LOCATION'])
+    return g.gc
 
 @app.before_request
 def before_request():
@@ -59,8 +65,13 @@ def verify_pin(auth, pin, user_id="none"):
 
 @app.route("/")
 def index():
-    g.gc = gspread.service_account(filename=app.config['CRED_LOCATION'])
-    sh = g.gc.create("test")
+    return "OK"
+
+@app.route("/initalize/")
+def initalize():
+    gc = get_gc()
+    sh = gc.create("test")
+    get_db().set("sheet_id", str(sh.id))
     sh.share(app.config['EMAIL1'], perm_type='user', role='writer')
     return "OK"
 
@@ -104,27 +115,23 @@ def job():
                     app.config['CONSUMER_KEY'], 
                     app.config['CONSUMER_SECRET'],
                     # Access Token here 
-                    (get_db().hget('user:' + str(id), 'token')),
+                    get_db().hget('user:' + str(id), 'token'),
                     # Access Token Secret here
-                    (get_db().hget('user:' + str(id), 'secret'))
+                    get_db().hget('user:' + str(id), 'secret')
                 )
                 api = tweepy.API(auth)
                 app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-                # test = followers.get_new_followers(id, api)
-                # app.logger.info(test)
-            # app.logger.info(test)
-            # if len(users) > 0:
-            #     app.logger.info("Success")
-            #     # followers.get_new_followers()
-            # else:
-            #     app.logger.info("Not verified")
+            shw = sheets.SheetsWrapper(db=get_db(), gc=get_gc())
     except Exception as e:
         app.logger.error(e)
-        app.logger.info("Failed")
-    # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
+        app.logger.error("JOB FAILED at {0}".format(datetime.now()))
+        # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
+    else:
+        app.logger.info("JOB SUCCEEDED")
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=job, trigger="interval", seconds=5)
+# needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
+scheduler.add_job(func=job, trigger="interval", seconds=30)
 scheduler.start()
 
 atexit.register(lambda: scheduler.shutdown())
