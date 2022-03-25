@@ -11,3 +11,4 @@ google-auth
 google-auth-oauthlib
 google
 gspread
+gspread_pandas

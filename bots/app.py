@@ -67,6 +67,10 @@ def verify_pin(auth, pin, user_id="none"):
 def index():
     return "OK"
 
+@app.route("/check/")
+def check():
+    return "OK"
+
 @app.route("/initalize/")
 def initalize():
     gc = get_gc()

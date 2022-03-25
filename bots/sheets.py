@@ -1,4 +1,4 @@
-import gspread, redis
+import gspread, redis, gspread_pandas
 import pandas as pd
 import os
 from flask import Flask, request, g, session
@@ -81,7 +81,28 @@ class SheetsWrapper(object):
         ))
         ws = self.sh.get_worksheet(0)
         ws.update_title("Scripts")
+        ws.batch_update([{
+            'range': 'A1:C1',
+            'values': [['Handle', 'Script', '']],
+        }])
+
+    def update(self):
+        self._gcp = gspread_pandas.spread.Spread(
+            self.sh_url, 
+            sheet=0, 
+            config=None, 
+            create_spread=False, 
+            create_sheet=False, 
+            scope=self.scopes
+            user='default', 
+            creds=None, 
+            client=None, 
+            permissions=None
+        )
+        pass
 
     def set_script(self):
         pass
 
+    def get_script(self, handle):
+        ws = self.sh.get_worksheet(0)
