@@ -4,8 +4,7 @@ from flask import Flask, request, g, session, render_template, after_this_reques
 import logging, tweepy
 import twitter, config, sheets
 import atexit
-import redis
-# import pymongo
+import pymongo
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
@@ -18,8 +17,12 @@ app.config.from_object('config.Config')
 
 def get_db():
     if not 'db' in g:
-        g.db = redis.Redis(host='redis')
-        # g.db = pymongo.MongoClient('mongodb')
+        g.db_client = pymongo.MongoClient('mongodb', 27017)
+        g.db = g.db_client['twitter']
+        g.db.users.create_index([('user_id', pymongo.ASCENDING)],
+                                  unique=True)
+        g.db.sheets.create_index([('sheet_id', pymongo.ASCENDING)],
+                                  unique=True)
     return g.db
 
 def get_auth():
@@ -56,9 +59,16 @@ def verify_pin(auth, pin, user_id="none"):
         app.logger.info("\nProcessing user_id: {0}\n".format(user.id))
         with app.app_context():
             session['user_id'] = user.id
-            get_db().sadd('users', user.id)
-            get_db().hset('screen_names', user.screen_name, user.id)
-            get_db().hmset('user:{0}'.format(user.id), dict(token=access_token, secret=access_token_secret))
+            db_user = {
+                'user_id': user.id,
+                'screen_name': user.screen_name,
+                'token': access_token, 
+                'secret': access_token_secret
+            }
+            if get_db().users.find_one({'user_id': user.id}):
+                app.logger.info("Twitter account {0} exists.".format(user.id))
+            else:
+                app.logger.info(get_db().users.insert_one(db_user))
     except tweepy.errors.Unauthorized as e:
         app.logger.error(e)
         app.logger.error("Please check your access tokens.")
@@ -81,7 +91,7 @@ def check():
 def initalize():
     gc = get_gc()
     sh = gc.create("test")
-    get_db().set("sheet_id", str(sh.id))
+    get_db().sheets.insert_one({"sheet_id": str(sh.id)})
     sh.share(app.config['EMAIL1'], perm_type='user', role='writer')
     return "OK"
 
@@ -95,7 +105,7 @@ def authorize():
         api = verify_pin(
             auth,
             pin)
-        user_tokens = g.db.hkeys('user:{0}'.format(session['user_id']))
+        user_tokens = g.db.users.find_one()
         if len(user_tokens) > 0:
             return "OK"
         else:
@@ -103,32 +113,31 @@ def authorize():
         # return session['oauth']
     auth = get_auth()
     auth_url = auth.get_authorization_url()
-    g.db.hset('oauth', key=auth.request_token["oauth_token"], value=auth.request_token["oauth_token_secret"])
+    # g.db.users.insert_one({
+    #     "oauth_token": auth.request_token["oauth_token"], 
+    #     "oauth_token_secret": auth.request_token["oauth_token_secret"]
+    # })
     session['oauth'] = auth.request_token
-    app.logger.info("oauth_token from REDIS: %s" % g.db.hget('oauth', auth.request_token["oauth_token"]))
     return render_template('authorize.html', auth_url=auth_url) 
 
 def job():
     try:
         with app.app_context():
-            app.logger.info('USERS {0}'.format(str(get_db().scan(match='user*'))))
-            names = get_db().hgetall('screen_names')
-            for name in names:
-                id = str(names[name], 'utf-8')
-                app.logger.info('Working on {0} : {1}'.format(name, id))
-                app.logger.info(get_db().hget('user:' + str(id), 'secret'))
+            for user in get_db().users.find():
+                id = str(user['user_id'])
+                app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
                 auth = tweepy.OAuth1UserHandler(
                     app.config['CONSUMER_KEY'], 
                     app.config['CONSUMER_SECRET'],
                     # Access Token here 
-                    get_db().hget('user:' + str(id), 'token'),
+                    user['token'],
                     # Access Token Secret here
-                    get_db().hget('user:' + str(id), 'secret')
+                    user['secret']
                 )
                 api = tweepy.API(auth)
                 app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-                tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
-                tw.get_new_followers()
+                # tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
+                # tw.get_new_followers()
             get_shw().update()
     except Exception as e:
         # app.logger.error(e)

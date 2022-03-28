@@ -1,7 +1,6 @@
 import tweepy
 from flask import Flask, request, redirect, Response, logging, g
 import os
-import redis
 from dotenv import load_dotenv
 
 load_dotenv()

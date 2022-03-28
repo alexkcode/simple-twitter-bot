@@ -2,13 +2,12 @@ import os
 from flask import Flask
 import tweepy
 import config
-import redis
 
 app = Flask(__name__)
 
 class TwitterWrapper(object):
 
-    def __init__(self, db:redis.Redis, api:tweepy.API, user_id=None) -> None:
+    def __init__(self, db, api:tweepy.API, user_id=None) -> None:
         self.db = db
         self.api = api
         self.user_id = user_id

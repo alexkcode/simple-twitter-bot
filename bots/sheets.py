@@ -1,4 +1,4 @@
-import gspread, redis
+import gspread
 from gspread_pandas import Spread, Client
 import pandas as pd
 import os
@@ -15,7 +15,7 @@ app.config.from_object('config.Config')
 
 class SheetsWrapper(object):
 
-    def __init__(self, db:redis.Redis, gc:gspread.Client, cred_location=None) -> None:
+    def __init__(self, db, gc:gspread.Client, cred_location=None) -> None:
         self.db = db
         self.gc = gc
         self.sh = None
@@ -29,12 +29,14 @@ class SheetsWrapper(object):
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'
         ]
+        # create spreadsheet for twitter bot configuration
         try:
-            # need to stringify otherwise it will return bytes format
-            self.sh_url = str(db.hget("sheet", "url"))
-            if self.sh_url is None:
+            found_sheet = self.db.sheets.find_one({"title": "Twitter Bot Configuration"})
+            if not found_sheet:
+                app.logger.warning("Old config sheet was not found. Creating new one...")
                 self.create_config_sheet()
             else:
+                self.sh_url = found_sheet['url']
                 app.logger.info('Reading from Google Sheet {0}'.format(self.sh_url))
                 self.sh = self.gc.open_by_url(self.sh_url)
                 ws = self.sh.get_worksheet(0)
@@ -46,7 +48,7 @@ class SheetsWrapper(object):
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
                     app.logger.info("Successfully acquired spreadsheet instance.")
         except Exception as e:
-            self.create_config_sheet()
+            # self.create_config_sheet()
             raise e
 
     def create_token(self):
@@ -75,18 +77,21 @@ class SheetsWrapper(object):
                 return self.gc
 
     def create_config_sheet(self):
+        # if self.db.sheets.find_one({"title": "Twitter Bot Configuration"}):
+        #     app.logger.info("Config sheet exists already at {0}.".format(
+        #         str(self.db.sheets.find_one({"title": "Twitter Bot Configuration"}))[0]['url']
+        #     ))
+        # else:
         sh = self.gc.create("Twitter Bot Configuration")
         app.logger.info("Created new spreadsheet instance.")
         self.sh = sh
-        self.db.hset("sheet", "id", sh.id)
-        self.db.hset("sheet", "title", sh.title)
-        self.db.hset("sheet", "url", sh.url)
+        sheet = {}
+        sheet["id"] = sh.id
+        sheet["title"] = sh.title
+        sheet["url"] = sh.url
         sh.share(app.config['EMAIL1'], perm_type='user', role='writer')
-        app.logger.warning("Old sheet was not found. Created new sheet {0} {1} {2}.".format(
-            str(self.db.hget("sheet", "title")),
-            str(self.db.hget("sheet", "id")),
-            str(self.db.hget("sheet", "url"))
-        ))
+        self.db.sheets.insert_one(sheet)
+        app.logger.warning("Old sheet was not found. Created new sheet {0}.".format(sheet))
 
     def update(self):
         self.create_token()
