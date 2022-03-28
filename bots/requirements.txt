@@ -3,6 +3,7 @@ APScheduler
 Flask-APScheduler
 # tweepy==3.10.0
 tweepy
+# pymongo
 # Flask-PyMongo
 redis
 python-dotenv
@@ -11,4 +12,4 @@ google-auth
 google-auth-oauthlib
 google
 gspread
-gspread_pandas
+gspread-pandas

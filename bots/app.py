@@ -5,6 +5,7 @@ import logging, tweepy
 import twitter, config, sheets
 import atexit
 import redis
+# import pymongo
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
@@ -18,6 +19,7 @@ app.config.from_object('config.Config')
 def get_db():
     if not 'db' in g:
         g.db = redis.Redis(host='redis')
+        # g.db = pymongo.MongoClient('mongodb')
     return g.db
 
 def get_auth():
@@ -33,6 +35,11 @@ def get_gc():
         g.gc = gspread.service_account(filename=app.config['CRED_LOCATION'])
     return g.gc
 
+def get_shw():
+    if not 'shw' in g:
+        g.shw = sheets.SheetsWrapper(db=get_db(), gc=get_gc())
+    return g.shw
+
 @app.before_request
 def before_request():
     g.db = get_db()
@@ -41,7 +48,6 @@ def before_request():
 
 def verify_pin(auth, pin, user_id="none"):
     access_token, access_token_secret = None, None
-    # g.db = get_db()
     api = None
     try:
         access_token, access_token_secret = auth.get_access_token(pin)
@@ -101,15 +107,11 @@ def authorize():
     session['oauth'] = auth.request_token
     app.logger.info("oauth_token from REDIS: %s" % g.db.hget('oauth', auth.request_token["oauth_token"]))
     return render_template('authorize.html', auth_url=auth_url) 
-    # except Exception as e:
-    #     print(e)
-    #     app.logger.error(str(e))
-    #     return render_template('authorize.html', error=e)
 
 def job():
     try:
         with app.app_context():
-            app.logger.info('USERS %s' % str(get_db().scan(match='user*')))
+            app.logger.info('USERS {0}'.format(str(get_db().scan(match='user*'))))
             names = get_db().hgetall('screen_names')
             for name in names:
                 id = str(names[name], 'utf-8')
@@ -125,17 +127,20 @@ def job():
                 )
                 api = tweepy.API(auth)
                 app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-            shw = sheets.SheetsWrapper(db=get_db(), gc=get_gc())
+                tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
+                tw.get_new_followers()
+            get_shw().update()
     except Exception as e:
-        app.logger.error(e)
+        # app.logger.error(e)
         app.logger.error("JOB FAILED at {0}".format(datetime.now()))
+        raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
         app.logger.info("JOB SUCCEEDED")
 
 scheduler = BackgroundScheduler()
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
-scheduler.add_job(func=job, trigger="interval", seconds=30)
+scheduler.add_job(func=job, trigger="interval", seconds=20)
 scheduler.start()
 
 atexit.register(lambda: scheduler.shutdown())

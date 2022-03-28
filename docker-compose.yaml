@@ -7,17 +7,17 @@ services:
   #   hostname: mongodb
   #   ports:
   #       - '27017:27017'
-    # environment:
-    #     - MONGO_REPLICA_SET_NAME=dan
-    # command:
-    #     - --storageEngine
-    #     - wiredTiger
-    #     - --replSet
-    #     - myrepl
-    # healthcheck:
-    #     test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo  --quiet) -eq 1
-    #     interval: 10s
-    #     start_period: 30s
+  #   environment:
+  #       - MONGO_REPLICA_SET_NAME=dan
+  #   command:
+  #       - --storageEngine
+  #       - wiredTiger
+  #       - --replSet
+  #       - myrepl
+  #   healthcheck:
+  #       test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo  --quiet) -eq 1
+  #       interval: 10s
+  #       start_period: 30s
 
   redis-server:
     image: redis:latest

@@ -2,21 +2,27 @@ import os
 from flask import Flask
 import tweepy
 import config
+import redis
 
 app = Flask(__name__)
 
 class TwitterWrapper(object):
 
-    def __init__(self, db, api:tweepy.API) -> None:
+    def __init__(self, db:redis.Redis, api:tweepy.API, user_id=None) -> None:
         self.db = db
         self.api = api
+        self.user_id = user_id
 
-    def get_new_followers(self, user_id):
-        ids = []
-        for page in tweepy.Cursor(self.api.get_follower_ids, user_id=user_id).pages():
-            ids.extend(page)
-        print(len(ids))
-        return ids
+    def get_new_followers(self, user_id=None) -> None:
+        if not user_id:
+            user_id = self.user_id
+        followers = {}
+        for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
+            for follower in page:
+                followers[follower.id] = follower
+            app.logger.info(followers)
+        # self.db.hmset("followers:{0}".format(user_id), followers)
+        app.logger.info("Got {0} followers.".format(len(followers)))
 
     def seed_db(self, username):
         old = self.get_old_followers(username)
@@ -36,10 +42,11 @@ class TwitterWrapper(object):
         return ids
 
     def save_followers(self, username, followers_list):
-        coll = self.db["followers"]
-        coll.update_one({"username":username},
-                        {"$set": {"username":username, "followers":followers_list}},
-                        upsert=True)
+        pass
+        # coll = self.db["followers"]
+        # coll.update_one({"username":username},
+        #                 {"$set": {"username":username, "followers":followers_list}},
+        #                 upsert=True)
 
     def get_username(self, ids, api):
         # auth.set_access_token(access_token, access_token_secret)
