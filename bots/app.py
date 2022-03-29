@@ -19,8 +19,13 @@ def get_db():
     if not 'db' in g:
         g.db_client = pymongo.MongoClient('mongodb', 27017)
         g.db = g.db_client['twitter']
-        g.db.users.create_index([('user_id', pymongo.ASCENDING)],
-                                  unique=True)
+        g.db.users.create_index(
+            [
+                ('user_id', pymongo.ASCENDING), 
+                ('followers.id', pymongo.ASCENDING)
+            ], 
+            unique=True
+        )
         g.db.sheets.create_index([('sheet_id', pymongo.ASCENDING)],
                                   unique=True)
     return g.db
@@ -42,6 +47,12 @@ def get_shw():
     if not 'shw' in g:
         g.shw = sheets.SheetsWrapper(db=get_db(), gc=get_gc())
     return g.shw
+
+def get_tww():
+    if not 'tww' in g:
+        pass
+        # g.tww = twitter.TwitterWrapper(db=get_db(), api=, user_id=None)
+    return g.tww
 
 @app.before_request
 def before_request():
@@ -85,7 +96,13 @@ def index():
 
 @app.route("/check/")
 def check():
-    return "OK"
+    user = get_db().users.find_one()
+    # script = get_shw().get_script(user['screen_name'])
+    script = user['script']
+    # get_shw().update()
+    # script = get_shw()._df.columns
+    app.logger.info(script)
+    return str(script)
 
 @app.route("/initalize/")
 def initalize():
@@ -138,7 +155,22 @@ def job():
                 app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
                 # tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
                 # tw.get_new_followers()
-            get_shw().update()
+                tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
+                tww.delete_followers()
+                tww.get_new_followers()
+                # app.logger.info(get_shw().get_script(user['screen_name']))
+                tww.generate_dm_text(user['user_id'])
+                app.logger.info('Follower IDs for {0}: {1}'.format(
+                    user['screen_name'], 
+                    tww.get_old_followers(user['user_id'])
+                ))
+                app.logger.info('Script for {0}: {1}'.format(
+                    user['user_id'], 
+                    get_db().users.find_one({'user_id': user['user_id']})['script']
+                ))
+                # tww.direct_message(tww.get_old_followers(user['user_id'])[0])
+                # tww.direct_message_all_followers()
+                # user = get_db().users.find_one({'user_id': user['user_id']})
     except Exception as e:
         # app.logger.error(e)
         app.logger.error("JOB FAILED at {0}".format(datetime.now()))

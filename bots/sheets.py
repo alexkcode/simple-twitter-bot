@@ -52,7 +52,7 @@ class SheetsWrapper(object):
             raise e
 
     def create_token(self):
-        if os.path.exists(self.cred_location):
+        if os.path.exists(self.cred_location) and not self.creds:
             self.creds = Credentials.from_service_account_file(self.cred_location, scopes=self.scopes)
         # If there are no (valid) credentials available, let the user log in.
         # if not self.creds or not self.creds.valid:
@@ -77,11 +77,6 @@ class SheetsWrapper(object):
                 return self.gc
 
     def create_config_sheet(self):
-        # if self.db.sheets.find_one({"title": "Twitter Bot Configuration"}):
-        #     app.logger.info("Config sheet exists already at {0}.".format(
-        #         str(self.db.sheets.find_one({"title": "Twitter Bot Configuration"}))[0]['url']
-        #     ))
-        # else:
         sh = self.gc.create("Twitter Bot Configuration")
         app.logger.info("Created new spreadsheet instance.")
         self.sh = sh
@@ -107,12 +102,13 @@ class SheetsWrapper(object):
             client=None, 
             permissions=None
         )
-        self._df = gsp.sheet_to_df()
+        self._df = gsp.sheet_to_df(index=None)
         app.logger.info(self._df)
 
     def set_script(self):
         pass
 
     def get_script(self, handle):
-        ws = self.sh.get_worksheet(0)
-        pass
+        # ws = self.sh.get_worksheet(0)
+        self.update()
+        return self._df[self._df['Handle'] == handle]['Script']
