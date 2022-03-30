@@ -65,7 +65,7 @@ class TwitterWrapper(object):
         try:
             followers = user['followers']
             for follower in followers:
-                ids.append(follower[0]['id_str'])
+                ids.append(follower['id_str'])
                 # app.logger.info(follower[0]['id_str'])
         except Exception as e:
             raise e
@@ -105,9 +105,29 @@ class TwitterWrapper(object):
     def direct_message(self, to_userid):
         # first_name = self.get_username(to_userid).split(' ')[0]
         self.generate_dm_text(to_userid)
-        user = self.db.users.find_one({'user_id':self.user_id})
+        user = self.db.users.find_one({'user_id': self.user_id})
         dm_text = user['script']
-        self.api.send_direct_message(to_userid, text=dm_text)
+        ctas=[
+          {
+            "type": "web_url",
+            "label": "Test CTA One",
+            "url": "https://www.upliftcampaigns.com/"
+          },
+          {
+            "type": "web_url",
+            "label": "Test CTA Two",
+            "url": "https://twitter.com/"
+          }
+        ]
+        # self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+        self.db.users.update_many(
+            filter={
+                'user_id': self.user_id,
+                'followers.id': {'$eq': to_userid}
+            },
+            update={'$set': {'followers.$[element].messaged': True}},
+            array_filters=[{ 'element.id': to_userid }]
+        )
         app.logger.info('Sent message from {0} to {1}'.format(
             user['screen_name'],
             to_userid
