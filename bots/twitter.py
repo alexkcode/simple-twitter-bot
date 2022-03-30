@@ -43,13 +43,13 @@ class TwitterWrapper(object):
             for follower in page:
                 # app.logger.info(follower)
                 # follower['user_id'] = follower['id_str'] + ':follower'
-                followers.append(follower._json)
+                # followers.append(follower._json)
+                self.db.users.find_one_and_update(
+                    filter={'user_id': user_id},
+                    update={'$addToSet': {'followers': follower._json}}
+                )
             # followers.extend(page)
             # app.logger.info(followers)
-        self.db.users.find_one_and_update(
-            filter={'user_id': user_id},
-            update={'$addToSet': {'followers': followers}}
-        )
         # app.logger.info(self.db.users.find_one(filter={'user_id': user_id}))
         app.logger.info('Got {0} followers.'.format(len(followers)))
 

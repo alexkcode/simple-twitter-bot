@@ -156,9 +156,9 @@ def job():
                 # tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
                 # tw.get_new_followers()
                 tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
-                tww.delete_followers()
+                # tww.delete_followers()
                 tww.get_new_followers()
-                # app.logger.info(get_shw().get_script(user['screen_name']))
+                app.logger.info(get_shw().get_script(user['screen_name']))
                 tww.generate_dm_text(user['user_id'])
                 app.logger.info('Follower IDs for {0}: {1}'.format(
                     user['screen_name'], 
@@ -181,7 +181,7 @@ def job():
 
 scheduler = BackgroundScheduler()
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
-scheduler.add_job(func=job, trigger="interval", seconds=20)
+scheduler.add_job(func=job, trigger="interval", seconds=30)
 scheduler.start()
 
 atexit.register(lambda: scheduler.shutdown())
