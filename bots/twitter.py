@@ -91,9 +91,9 @@ class TwitterWrapper(object):
         """
         users = None 
         if user_id:
-            users = self.db.users.find() 
+            users = [self.db.users.find_one({'user_id':user_id})]
         else:
-            users = self.db.users.find_one({'user_id':user_id})
+            users = self.db.users.find()
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
             self.db.users.find_one_and_update(

@@ -192,6 +192,8 @@ def check_sheet():
             for user in get_db().users.find():
                 status = get_shw().job_status(user['screen_name']).lower()
                 if status == 'start':
+                    start_job()
+                    get_db().jobs.update_one()
                     get_scheduler().add_job(func=job, trigger="interval", seconds=30)
 
     except Exception as e:

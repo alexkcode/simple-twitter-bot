@@ -43,7 +43,7 @@ class SheetsWrapper(object):
                 ws.update_title("Scripts")
                 ws.batch_update([{
                     'range': 'A1:C1',
-                    'values': [['Handle', 'Script', 'Job']],
+                    'values': [['ID','Handle', 'Script', 'Job']],
                 }])
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
                     app.logger.info("Successfully acquired spreadsheet instance.")
