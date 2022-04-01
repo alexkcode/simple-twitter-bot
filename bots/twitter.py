@@ -123,7 +123,7 @@ class TwitterWrapper(object):
         self.db.users.update_many(
             filter={
                 'user_id': self.user_id,
-                'followers.id': {'$eq': to_userid}
+                # 'followers.id': {'$eq': to_userid}
             },
             update={'$set': {'followers.$[element].messaged': True}},
             array_filters=[{ 'element.id': to_userid }]

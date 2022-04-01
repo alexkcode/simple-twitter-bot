@@ -15,6 +15,11 @@ app.secret_key = secrets.token_urlsafe(16)
 logging.basicConfig(level=logging.DEBUG)
 app.config.from_object('config.Config')
 
+def get_scheduler():
+    if not 'scheduler' in g:
+        g.scheduler = BackgroundScheduler()
+    return g.scheduler
+
 def get_db():
     if not 'db' in g:
         g.db_client = pymongo.MongoClient('mongodb', 27017)
@@ -94,23 +99,24 @@ def verify_pin(auth, pin, user_id="none"):
 def index():
     return "OK"
 
-@app.route("/check/")
-def check():
-    user = get_db().users.find_one()
-    # script = get_shw().get_script(user['screen_name'])
-    script = user['script']
-    # get_shw().update()
-    # script = get_shw()._df.columns
-    app.logger.info(script)
-    return str(script)
+@app.route("/start_job")
+def start_job():
+    pass
 
-@app.route("/initalize/")
-def initalize():
-    gc = get_gc()
-    sh = gc.create("test")
-    get_db().sheets.insert_one({"sheet_id": str(sh.id)})
-    sh.share(app.config['EMAIL1'], perm_type='user', role='writer')
-    return "OK"
+@app.route("/stop_all")
+def stop_all():
+    pass
+
+@app.route("/test/<screen_name>/<follower>")
+def test(screen_name, follower):
+    result = get_db().users.find_one(
+        filter={
+            'screen_name': screen_name,
+        },
+        update={'$set': {'followers.$[element].messaged': True}},
+        array_filters=[{ 'element.screen_name': follower }]
+    )
+    return result
 
 @app.route("/authorize/", methods=['GET', 'POST'])
 def authorize():
@@ -137,52 +143,69 @@ def authorize():
     session['oauth'] = auth.request_token
     return render_template('authorize.html', auth_url=auth_url) 
 
-def job():
+def job(screen_name):
     try:
         with app.app_context():
-            for user in get_db().users.find():
-                id = str(user['user_id'])
-                app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
-                auth = tweepy.OAuth1UserHandler(
-                    app.config['CONSUMER_KEY'], 
-                    app.config['CONSUMER_SECRET'],
-                    # Access Token here 
-                    user['token'],
-                    # Access Token Secret here
-                    user['secret']
-                )
-                api = tweepy.API(auth)
-                app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-                # tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
-                # tw.get_new_followers()
-                tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
-                # tww.delete_followers()
-                tww.get_new_followers()
-                app.logger.info(get_shw().get_script(user['screen_name']))
-                tww.generate_dm_text(user['user_id'])
-                app.logger.info('Follower IDs for {0}: {1}'.format(
-                    user['screen_name'], 
-                    tww.get_old_followers(user['user_id'])
-                ))
-                app.logger.info('Script for {0}: {1}'.format(
-                    user['user_id'], 
-                    get_db().users.find_one({'user_id': user['user_id']})['script']
-                ))
-                # tww.direct_message(tww.get_old_followers(user['user_id'])[0])
-                # tww.direct_message_all_followers()
-                # user = get_db().users.find_one({'user_id': user['user_id']})
+            user = get_db().users.find_one({'screen_name':screen_name})
+            id = str(user['user_id'])
+            app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
+            auth = tweepy.OAuth1UserHandler(
+                app.config['CONSUMER_KEY'], 
+                app.config['CONSUMER_SECRET'],
+                # Access Token here 
+                user['token'],
+                # Access Token Secret here
+                user['secret']
+            )
+            api = tweepy.API(auth)
+            app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
+            # tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
+            # tw.get_new_followers()
+            tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
+            # tww.delete_followers()
+            tww.get_new_followers()
+            app.logger.info(get_shw().get_script(user['screen_name']))
+            tww.generate_dm_text(user['user_id'])
+            app.logger.info('Follower IDs for {0}: {1}'.format(
+                user['screen_name'], 
+                tww.get_old_followers(user['user_id'])
+            ))
+            app.logger.info('Script for {0}: {1}'.format(
+                user['user_id'], 
+                get_db().users.find_one({'user_id': user['user_id']})['script']
+            ))
+            # tww.direct_message(tww.get_old_followers(user['user_id'])[0])
+            # tww.direct_message_all_followers()
+            # user = get_db().users.find_one({'user_id': user['user_id']})
     except Exception as e:
         # app.logger.error(e)
-        app.logger.error("JOB FAILED at {0}".format(datetime.now()))
+        app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
         raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
-        app.logger.info("JOB SUCCEEDED")
+        app.logger.info("TWITTER JOB SUCCEEDED")
 
-scheduler = BackgroundScheduler()
+def check_sheet():
+    try:
+        with app.app_context():
+            get_shw().update()
+            for user in get_db().users.find():
+                status = get_shw().job_status(user['screen_name']).lower()
+                if status == 'start':
+                    get_scheduler().add_job(func=job, trigger="interval", seconds=30)
+
+    except Exception as e:
+        app.logger.error("GOOGLE SHEETS CHECK FAILED at {0}".format(datetime.now()))
+        app.logger.error(e)
+    else:
+        app.logger.info("GOOGLE SHEETS CHECK SUCCEEDED")
+
+scheduler = None
+with app.app_context():
+    scheduler = get_scheduler()
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
-scheduler.add_job(func=job, trigger="interval", seconds=30)
-scheduler.start()
+scheduler.add_job(func=check_sheet, trigger="interval", seconds=60)
+scheduler.start(paused=True)
 
 atexit.register(lambda: scheduler.shutdown())
 
