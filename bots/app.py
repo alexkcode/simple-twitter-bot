@@ -99,9 +99,38 @@ def verify_pin(auth, pin, user_id="none"):
 def index():
     return "OK"
 
-@app.route("/start_job")
-def start_job():
-    pass
+@app.route("/start_job/<user_id>")
+def start_job(user_id):
+    scheduled_job = get_scheduler().add_job(
+        func=job, 
+        trigger="interval", 
+        seconds=30,
+        replace_existing=True
+    )
+    get_db().jobs.find_one_and_update(
+        filter={
+            'user_id': user_id
+        },
+        update={
+            'user_id': user_id,
+            'job_id': scheduled_job.id
+        },
+        upsert=True
+    )
+
+@app.route("/stop_job/<user_id>")
+def stop_job(user_id):
+    filter = {'user_id': user_id}
+    exising_job = get_db().jobs.find_one(filter)
+    user = get_db().users.find_one(filter)
+    removed_job = get_scheduler().remove_job(exising_job.id)
+    deleted_job = get_db().jobs.find_one_and_delete(filter)
+    app.logger.warning(
+        'Removed job {0} for user {1}'.format(
+            removed_job, 
+            user['screen_name']
+        )
+    )
 
 @app.route("/stop_all")
 def stop_all():
@@ -109,12 +138,13 @@ def stop_all():
 
 @app.route("/test/<screen_name>/<follower>")
 def test(screen_name, follower):
-    result = get_db().users.find_one(
+    result = get_db().users.find_one_and_update(
         filter={
             'screen_name': screen_name,
         },
         update={'$set': {'followers.$[element].messaged': True}},
-        array_filters=[{ 'element.screen_name': follower }]
+        array_filters=[{ 'element.screen_name': follower }],
+        return_document=pymongo.ReturnDocument.AFTER
     )
     return result
 
@@ -192,10 +222,9 @@ def check_sheet():
             for user in get_db().users.find():
                 status = get_shw().job_status(user['screen_name']).lower()
                 if status == 'start':
-                    start_job()
-                    get_db().jobs.update_one()
-                    get_scheduler().add_job(func=job, trigger="interval", seconds=30)
-
+                    start_job(user['user_id'])
+                else:
+                    stop_job(user['user_id'])
     except Exception as e:
         app.logger.error("GOOGLE SHEETS CHECK FAILED at {0}".format(datetime.now()))
         app.logger.error(e)
@@ -206,8 +235,8 @@ scheduler = None
 with app.app_context():
     scheduler = get_scheduler()
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
-scheduler.add_job(func=check_sheet, trigger="interval", seconds=60)
-scheduler.start(paused=True)
+scheduler.add_job(func=check_sheet, trigger="interval", seconds=30)
+scheduler.start(paused=False)
 
 atexit.register(lambda: scheduler.shutdown())
 

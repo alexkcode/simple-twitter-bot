@@ -132,3 +132,6 @@ dmypy.json
 */testaccounts.txt
 */client_secret*.json
 */*.json
+
+# mongo
+*/db

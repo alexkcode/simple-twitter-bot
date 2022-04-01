@@ -42,7 +42,7 @@ class SheetsWrapper(object):
                 ws = self.sh.get_worksheet(0)
                 ws.update_title("Scripts")
                 ws.batch_update([{
-                    'range': 'A1:C1',
+                    'range': 'A1:D1',
                     'values': [['ID','Handle', 'Script', 'Job']],
                 }])
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
@@ -105,8 +105,22 @@ class SheetsWrapper(object):
         self._df = gsp.sheet_to_df(index=None)
         app.logger.info(self._df)
 
-    def set_script(self):
-        pass
+    def upload(self, df):
+        self.create_token()
+        gsp = Spread(
+            self.sh_url, 
+            sheet=0, 
+            config=None, 
+            create_spread=False, 
+            create_sheet=False, 
+            scope=self.scopes,
+            user='default', 
+            creds=self.creds, 
+            client=None, 
+            permissions=None
+        )
+        gsp.df_to_sheet(df, index=False, headers=True)
+        app.logger.warning('Uploaded config sheet.')
 
     def get_script(self, handle):
         # ws = self.sh.get_worksheet(0)
@@ -116,3 +130,11 @@ class SheetsWrapper(object):
     def job_status(self, handle):
         self.update()
         return self._df[self._df['Handle'] == handle]['Job']
+
+    def set_userids(self):
+        self.update()
+        users = self.db.users.find()
+        for user in users:
+            handle = user['screen_name']
+            self._df[self._df['Handle'] == handle]['ID'] = user['id']
+        self.upload(self._df)

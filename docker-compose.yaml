@@ -5,8 +5,8 @@ services:
   mongodb:
     image: mongo:latest
     hostname: mongodb
-    ports:
-        - '27017:27017'
+    # ports:
+    #     - '27017:27017'
     volumes:
         - ./data/db:/data/db        
     environment:
@@ -23,7 +23,6 @@ services:
         start_period: 30s
 
   flask:
-    # image: 'alexkcode/webhook-flask-listener:latest'
     build:
       context: bots
       dockerfile: Dockerfile
