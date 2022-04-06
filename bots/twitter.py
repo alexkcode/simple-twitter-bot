@@ -1,4 +1,5 @@
 import os, json
+import pandas as pd
 from re import U
 from flask import Flask
 import tweepy
@@ -133,23 +134,33 @@ class TwitterWrapper(object):
                     update={'$set': {'script': script[0]}}
                 )
 
-    def direct_message(self, to_userid):
+    def construct_ctas(self, client_handle):
+        config_df = self.sheets.get_df()
+        client_row = config_df[config_df['Handle'] == client_handle]
+        cta_labels = ['CTA 1 Label', 'CTA 2 Label', 'CTA 3 Label']
+        cta_urls = ['CTA 1 Url', 'CTA 2 Url', 'CTA 3 Url']
+        ctas = []
+        for label_col, url_col in zip(cta_labels, cta_urls):
+            match = client_row[label_col].str.match('[a-z0-9]*', case=False)
+            if match.all():
+                if len(client_row[label_col][0]) > 36:
+                    app.logger.error("{0} too long!".format(label_col))
+                else:
+                    ctas.append({
+                        "type": "web_url",
+                        "label": client_row[label_col][0],
+                        "url": client_row[url_col][0]
+                    })
+        return ctas
+
+    def direct_message(self, from_userid=None, to_userid=None):
+        if not from_userid:
+            from_userid = self.user_id
         # first_name = self.get_username(to_userid).split(' ')[0]
         self.generate_dm_text(to_userid)
         user = self.db.users.find_one({'user_id': self.user_id})
         dm_text = user['script']
-        ctas=[
-          {
-            "type": "web_url",
-            "label": "Test CTA One",
-            "url": "https://www.upliftcampaigns.com/"
-          },
-          {
-            "type": "web_url",
-            "label": "Test CTA Two",
-            "url": "https://twitter.com/"
-          }
-        ]
+        ctas = self.construct_ctas(self.user_id)
         # self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
         result = self.db.users.update_many(
             filter={
@@ -166,6 +177,17 @@ class TwitterWrapper(object):
             to_userid
         ))
 
+    def filter_inactive(self, follower):
+        # no new accounts, no accounts with zero followers, no accounts with fewer than 20 tweets
+        creation_date_utc = pd.to_datetime(follower['created_at'])
+        if follower['statuses_count'] > 20 and follower['followers_count'] > 0:
+            return True
+
+    def filter_follower(self, handle):
+        filter_df = self.sheets.get_df()
+        filter_df[filter_df['Handle'] == handle]
+        pass
+
     def direct_message_all_followers(self):
         user_id = self.user_id
         user = self.db.users.find_one({'user_id': self.user_id})
@@ -174,4 +196,4 @@ class TwitterWrapper(object):
             if blocklist.str.contains(follower['screen_name']).any():
                 app.logger.info('Follower {0} is blocked.'.format(follower['screen_name']))
             else:
-                self.direct_message(follower['id'])
+                self.direct_message(self.user_id, follower['id'])

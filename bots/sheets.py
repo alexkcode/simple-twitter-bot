@@ -42,8 +42,13 @@ class SheetsWrapper(object):
                 ws = self.sh.get_worksheet(0)
                 ws.update_title("Scripts")
                 ws.batch_update([{
-                    'range': 'A1:D1',
-                    'values': [['ID','Handle', 'Script', 'Job']],
+                    'range': 'A1:J1',
+                    'values': [[
+                        'ID','Handle', 'Script', 'Job', 
+                        'CTA 1 Label', 'CTA 1 Url', 
+                        'CTA 2 Label', 'CTA 2 Url', 
+                        'CTA 3 Label', 'CTA 3 Url'
+                    ]],
                 }])
                 self.create_blocklist()
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
@@ -168,3 +173,7 @@ class SheetsWrapper(object):
     def get_blocklist(self, handle):
         self.update()
         return self._blocklist[handle]
+
+    def get_df(self):
+        self.update()
+        return self._df
