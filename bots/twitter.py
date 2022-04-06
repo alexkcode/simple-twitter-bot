@@ -2,9 +2,8 @@ import os, json
 import pandas as pd
 from re import U
 from flask import Flask
-import tweepy
-import config
-import sheets
+import tweepy, config, sheets
+import datetime
 
 app = Flask(__name__)
 
@@ -178,10 +177,19 @@ class TwitterWrapper(object):
         ))
 
     def filter_inactive(self, follower):
-        # no new accounts, no accounts with zero followers, no accounts with fewer than 20 tweets
-        creation_date_utc = pd.to_datetime(follower['created_at'])
+        """
+        Filter out new accounts, accounts with zero followers
+        and accounts with fewer than 20 tweets
+        """
+        creation_date_utc = pd.to_datetime(
+            follower['created_at'], 
+            # "Mon Nov 29 21:18:15 +0000 2010"
+            format='%a %b %d %H:%M:%S %z %Y'
+        )
+        account_age = creation_date_utc - datetime.utcnow()
         if follower['statuses_count'] > 20 and follower['followers_count'] > 0:
-            return True
+            if account_age.days > 365:
+                return True
 
     def filter_follower(self, handle):
         filter_df = self.sheets.get_df()
