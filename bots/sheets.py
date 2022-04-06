@@ -45,6 +45,7 @@ class SheetsWrapper(object):
                     'range': 'A1:D1',
                     'values': [['ID','Handle', 'Script', 'Job']],
                 }])
+                self.create_blocklist()
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
                     app.logger.info("Successfully acquired spreadsheet instance.")
         except Exception as e:
@@ -92,7 +93,7 @@ class SheetsWrapper(object):
         self.create_token()
         gsp = Spread(
             self.sh_url, 
-            sheet=0, 
+            sheet='Scripts', 
             config=None, 
             create_spread=False, 
             create_sheet=False, 
@@ -104,6 +105,20 @@ class SheetsWrapper(object):
         )
         self._df = gsp.sheet_to_df(index=None)
         app.logger.info(self._df)
+        gsp = Spread(
+            self.sh_url, 
+            sheet='Blocklist', 
+            config=None, 
+            create_spread=False, 
+            create_sheet=False, 
+            scope=self.scopes,
+            user='default', 
+            creds=self.creds, 
+            client=None, 
+            permissions=None
+        )
+        self._blocklist = gsp.sheet_to_df(index=None)
+
 
     def upload(self, df):
         self.create_token()
@@ -138,3 +153,18 @@ class SheetsWrapper(object):
             handle = user['screen_name']
             self._df[self._df['Handle'] == handle]['ID'] = user['id']
         self.upload(self._df)
+
+    def create_blocklist(self):
+        try:
+            self.sh.add_worksheet("Blocklist", 1, 1)
+        except Exception as e:
+            if 'already exists' in str(e):
+                app.logger.warning(e)
+            else:
+                raise e
+        except gspread.WorksheetNotFound as e:
+            app.logger.warning(e)
+
+    def get_blocklist(self, handle):
+        self.update()
+        return self._blocklist[handle]

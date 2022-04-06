@@ -5,19 +5,30 @@ import logging, tweepy
 import twitter, config, sheets
 import atexit
 import pymongo
+import apscheduler
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_apscheduler import APScheduler
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = secrets.token_urlsafe(16)
-logging.basicConfig(level=logging.DEBUG)
 app.config.from_object('config.Config')
+
+LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
+              '-35s %(lineno) -5d: %(message)s')
+logging.basicConfig(
+    filename='error.log', 
+    filemode='w', 
+    level=logging.DEBUG, 
+    format=LOG_FORMAT
+)
 
 def get_scheduler():
     if not 'scheduler' in g:
         g.scheduler = BackgroundScheduler()
+        # g.scheduler = APScheduler()
     return g.scheduler
 
 def get_db():
@@ -26,8 +37,7 @@ def get_db():
         g.db = g.db_client['twitter']
         g.db.users.create_index(
             [
-                ('user_id', pymongo.ASCENDING), 
-                ('followers.id', pymongo.ASCENDING)
+                ('user_id', pymongo.ASCENDING)
             ], 
             unique=True
         )
@@ -53,11 +63,27 @@ def get_shw():
         g.shw = sheets.SheetsWrapper(db=get_db(), gc=get_gc())
     return g.shw
 
-def get_tww():
-    if not 'tww' in g:
-        pass
-        # g.tww = twitter.TwitterWrapper(db=get_db(), api=, user_id=None)
-    return g.tww
+def get_tww(screen_name):
+    user = get_db().users.find_one({'screen_name': screen_name})
+    auth = tweepy.OAuth1UserHandler(
+        app.config['CONSUMER_KEY'], 
+        app.config['CONSUMER_SECRET'],
+        # Access Token here 
+        user['token'],
+        # Access Token Secret here
+        user['secret']
+    )
+    api = tweepy.API(auth)
+    return twitter.TwitterWrapper(
+        db=get_db(), 
+        api=api, 
+        sheets=get_shw(), 
+        user_id=api.verify_credentials().id
+    )
+
+scheduler = None
+with app.app_context():
+    scheduler = get_scheduler()
 
 @app.before_request
 def before_request():
@@ -79,12 +105,22 @@ def verify_pin(auth, pin, user_id="none"):
                 'user_id': user.id,
                 'screen_name': user.screen_name,
                 'token': access_token, 
-                'secret': access_token_secret
+                'secret': access_token_secret,
+                'followers': []
             }
-            if get_db().users.find_one({'user_id': user.id}):
-                app.logger.info("Twitter account {0} exists.".format(user.id))
-            else:
-                app.logger.info(get_db().users.insert_one(db_user))
+            result = get_db().users.update_one(
+                filter={'user_id': user.id},
+                update={
+                    '$setOnInsert': db_user
+                    # '$setOnInsert': {'followers': []}
+                },
+                upsert=True
+            )
+            app.logger.info("Twitter account {0}: {1}".format(user.id, result))
+            # if get_db().users.find_one({'user_id': user.id}):
+            #     app.logger.info("Twitter account {0} exists.".format(user.id))
+            # else:
+            #     app.logger.info(get_db().users.insert_one(db_user))
     except tweepy.errors.Unauthorized as e:
         app.logger.error(e)
         app.logger.error("Please check your access tokens.")
@@ -99,42 +135,133 @@ def verify_pin(auth, pin, user_id="none"):
 def index():
     return "OK"
 
+def job(screen_name):
+    try:
+        with app.app_context():
+            app.logger.info("TWITTER JOB STARTING ...")
+            user = get_db().users.find_one({'screen_name':screen_name})
+            id = str(user['user_id'])
+            app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
+            auth = tweepy.OAuth1UserHandler(
+                app.config['CONSUMER_KEY'], 
+                app.config['CONSUMER_SECRET'],
+                # Access Token here 
+                user['token'],
+                # Access Token Secret here
+                user['secret']
+            )
+            api = tweepy.API(auth)
+            app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
+            tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
+            tww.delete_followers(user_id=user['user_id'])
+            tww.get_new_followers()
+            app.logger.info(get_shw().get_script(user['screen_name']))
+            tww.generate_dm_text(user['user_id'])
+            app.logger.info('Follower IDs for {0}: {1}'.format(
+                user['screen_name'], 
+                tww.get_old_followers(user['user_id'])
+            ))
+            app.logger.info('Script for {0}: {1}'.format(
+                user['user_id'], 
+                get_db().users.find_one({'user_id': user['user_id']})['script']
+            ))
+            # tww.direct_message(tww.get_old_followers(user['user_id'])[0])
+            tww.direct_message_all_followers()
+            # user = get_db().users.find_one({'user_id': user['user_id']})
+    except Exception as e:
+        # app.logger.error(e)
+        app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
+        app.logger.error(e)
+        raise e
+        # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
+    else:
+        app.logger.info("TWITTER JOB SUCCEEDED")
+
 @app.route("/start_job/<user_id>")
 def start_job(user_id):
-    scheduled_job = get_scheduler().add_job(
-        func=job, 
-        trigger="interval", 
-        seconds=30,
-        replace_existing=True
-    )
-    get_db().jobs.find_one_and_update(
-        filter={
-            'user_id': user_id
-        },
-        update={
-            'user_id': user_id,
-            'job_id': scheduled_job.id
-        },
-        upsert=True
-    )
+    with app.app_context():
+        user = get_db().users.find_one(
+            filter={
+                'user_id': user_id
+            }
+        )
+        # if not user:
+        #     return "USER NOT FOUND. DID YOU INPUT USER ID???"
+        running_job = get_db().jobs.find_one(
+            filter={
+                'user_id': user_id
+            }
+        )
+        message = ''
+        if running_job:
+        # if False:
+            message = 'JOB FOR TWITTER USER {0} EXISTS.\n{1}'.format(
+                user['screen_name'],
+                running_job
+            )
+        else:
+            # scheduler = get_scheduler()
+            scheduled_job = scheduler.add_job(
+                func=job, 
+                replace_existing=True,
+                # args=[user['screen_name']],
+                kwargs={'screen_name': user['screen_name']},
+                # trigger="interval", 
+                # seconds=10,
+                id=user['screen_name']
+            )
+            app.logger.info('Current jobs: {0}'.format(scheduler.get_jobs()))
+            get_db().jobs.find_one_and_update(
+                filter={
+                    'user_id': user_id
+                },
+                update={
+                    '$set': {
+                        'user_id': user_id,
+                        'job_id': scheduled_job.id
+                    }
+                },
+                upsert=True
+            )
+            message = 'ADDED JOB FOR TWITTER {0}'.format(scheduled_job)
+        app.logger.warning(message)
+    return message
 
 @app.route("/stop_job/<user_id>")
 def stop_job(user_id):
     filter = {'user_id': user_id}
-    exising_job = get_db().jobs.find_one(filter)
+    db_job = get_db().jobs.find_one(filter)
     user = get_db().users.find_one(filter)
-    removed_job = get_scheduler().remove_job(exising_job.id)
-    deleted_job = get_db().jobs.find_one_and_delete(filter)
-    app.logger.warning(
-        'Removed job {0} for user {1}'.format(
-            removed_job, 
-            user['screen_name']
+    existing_job = None
+    try:
+        existing_job = scheduler.get_job(db_job['job_id'])
+        app.logger.info('EXISTING JOB : {0}'.format(existing_job))
+        deleted_job = get_db().jobs.find_one_and_delete(filter)
+        if existing_job:
+            removed_job = scheduler.remove_job(existing_job['job_id'])
+        app.logger.warning(
+            'Removed job {0} for user {1}'.format(
+                removed_job, 
+                user['screen_name']
+            )
         )
-    )
+    except Exception as e:
+        app.logger.warning(
+            'No jobs to remove for user {0}. {1}'.format(user['screen_name'], e)
+        )
 
 @app.route("/stop_all")
 def stop_all():
-    pass
+    for job in get_db().jobs.find():
+        removed_job = get_scheduler().remove_job(job['job_id'])
+        deleted_job = get_db().jobs.delete_many({})
+    return "ALL JOBS DELETED."
+
+@app.route("/delete_followers/<screen_name>")
+def delete_followers(screen_name):
+    tww = get_tww(screen_name)
+    tww.delete_followers(screen_name=screen_name)
+    return "Removed followers for {0} from the DB.".format(screen_name)
 
 @app.route("/test/<screen_name>/<follower>")
 def test(screen_name, follower):
@@ -150,7 +277,6 @@ def test(screen_name, follower):
 
 @app.route("/authorize/", methods=['GET', 'POST'])
 def authorize():
-    # try:
     if request.method == 'POST':
         pin = request.form['pin']
         auth = get_auth()
@@ -163,77 +289,31 @@ def authorize():
             return "OK"
         else:
             return "NOT AUTHORIZED" 
-        # return session['oauth']
     auth = get_auth()
     auth_url = auth.get_authorization_url()
-    # g.db.users.insert_one({
-    #     "oauth_token": auth.request_token["oauth_token"], 
-    #     "oauth_token_secret": auth.request_token["oauth_token_secret"]
-    # })
     session['oauth'] = auth.request_token
     return render_template('authorize.html', auth_url=auth_url) 
 
-def job(screen_name):
-    try:
-        with app.app_context():
-            user = get_db().users.find_one({'screen_name':screen_name})
-            id = str(user['user_id'])
-            app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
-            auth = tweepy.OAuth1UserHandler(
-                app.config['CONSUMER_KEY'], 
-                app.config['CONSUMER_SECRET'],
-                # Access Token here 
-                user['token'],
-                # Access Token Secret here
-                user['secret']
-            )
-            api = tweepy.API(auth)
-            app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-            # tw = twitter.TwitterWrapper(db=get_db(), api=api, user_id=id)
-            # tw.get_new_followers()
-            tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
-            # tww.delete_followers()
-            tww.get_new_followers()
-            app.logger.info(get_shw().get_script(user['screen_name']))
-            tww.generate_dm_text(user['user_id'])
-            app.logger.info('Follower IDs for {0}: {1}'.format(
-                user['screen_name'], 
-                tww.get_old_followers(user['user_id'])
-            ))
-            app.logger.info('Script for {0}: {1}'.format(
-                user['user_id'], 
-                get_db().users.find_one({'user_id': user['user_id']})['script']
-            ))
-            # tww.direct_message(tww.get_old_followers(user['user_id'])[0])
-            # tww.direct_message_all_followers()
-            # user = get_db().users.find_one({'user_id': user['user_id']})
-    except Exception as e:
-        # app.logger.error(e)
-        app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
-        raise e
-        # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
-    else:
-        app.logger.info("TWITTER JOB SUCCEEDED")
-
 def check_sheet():
     try:
+        app.logger.info("STARTING GOOGLE SHEETS CHECK")
         with app.app_context():
             get_shw().update()
             for user in get_db().users.find():
-                status = get_shw().job_status(user['screen_name']).lower()
-                if status == 'start':
-                    start_job(user['user_id'])
-                else:
-                    stop_job(user['user_id'])
+                status = get_shw().job_status(user['screen_name']).str.lower()[0]
+                app.logger.info('Job status : {0}'.format(status))
+                if status:
+                    if status == 'start':
+                        start_job(user['user_id'])
+                    else:
+                        stop_job(user['user_id'])
+            scheduler.print_jobs()
     except Exception as e:
         app.logger.error("GOOGLE SHEETS CHECK FAILED at {0}".format(datetime.now()))
-        app.logger.error(e)
+        raise(e)
     else:
         app.logger.info("GOOGLE SHEETS CHECK SUCCEEDED")
 
-scheduler = None
-with app.app_context():
-    scheduler = get_scheduler()
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
 scheduler.add_job(func=check_sheet, trigger="interval", seconds=30)
 scheduler.start(paused=False)
