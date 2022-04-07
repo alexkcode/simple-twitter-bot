@@ -203,7 +203,9 @@ class TwitterWrapper(object):
         user = self.db.users.find_one({'user_id': self.user_id})
         blocklist = self.sheets.get_blocklist(user['screen_name'])
         for follower in self.get_old_followers(user_id):
-            if blocklist.str.contains(follower['screen_name']).any():
+            blocked = blocklist.str.contains(follower['screen_name']).any()
+            inactive = self.filter_inactive(follower)
+            if blocked or inactive:
                 app.logger.info('Follower {0} is blocked.'.format(follower['screen_name']))
             else:
                 self.direct_message(self.user_id, follower['id'])
