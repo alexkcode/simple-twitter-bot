@@ -6,6 +6,6 @@ services:
       context: ./
       dockerfile: tests/Dockerfile
     image: simple-twitter-bot-test:latest
-    volumes:
-      - ./bots:/app
-      - ./tests:/app
+    # volumes:
+    #   - ./bots:/app
+    #   - ./tests:/app/tests

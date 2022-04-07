@@ -10,13 +10,18 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 RUN pip3 install pytest
 
+ENV PYTHONPATH /app
+
 COPY ./bots /app
 
 COPY ./tests /app
 
 RUN ["touch", "__init__.py"]
 
+# RUN ["touch", "tests/__init__.py"]
+
+RUN ["ls", ".", "-a"]
+
 # sudo docker-compose -f test-docker-compose.yaml up --build
 # CMD ["pytest", "tests/test_twitter_wrapper.py"]
-
-CMD ["ls", "../app", "-a"]
+CMD ["pytest", "test_twitter_wrapper.py"]

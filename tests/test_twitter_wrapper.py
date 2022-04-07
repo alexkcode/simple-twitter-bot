@@ -1,9 +1,9 @@
 import pytest
-from app.bots.twitter import TwitterWrapper
+import twitter
 
 @pytest.fixture()
 def tww():
-    return TwitterWrapper(
+    return twitter.TwitterWrapper(
         db=None, 
         api=None, 
         sheets=None, 
@@ -11,14 +11,23 @@ def tww():
     )
 
 @pytest.fixture()
-def follower(tww):
+def follower_good():
     follower = {
         'created_at': 'Mon Nov 29 21:18:15 +0000 2010',
-        'statuses_count': 1,
+        'statuses_count': 21,
         'followers_count': 1
     }
     return follower
 
-def test_filter_inactive(follower):
-    filtered = tww.filter_inactive(follower)
-    assert filtered
+@pytest.fixture()
+def follower_bad():
+    follower = {
+        'created_at': 'Mon Nov 29 21:18:15 +0000 2010',
+        'statuses_count': 0,
+        'followers_count': 0
+    }
+    return follower
+
+def test_filter_inactive(follower_good, follower_bad, tww):
+    assert tww.filter_inactive(follower_good)
+    assert not tww.filter_inactive(follower_bad)

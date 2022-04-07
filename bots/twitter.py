@@ -1,9 +1,9 @@
-import os, json
+import os, json, pytz
 import pandas as pd
 from re import U
 from flask import Flask
 import tweepy, config, sheets
-import datetime
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -184,12 +184,14 @@ class TwitterWrapper(object):
         creation_date_utc = pd.to_datetime(
             follower['created_at'], 
             # "Mon Nov 29 21:18:15 +0000 2010"
-            format='%a %b %d %H:%M:%S %z %Y'
+            format='%a %b %d %H:%M:%S %z %Y',
+            utc=True
         )
-        account_age = creation_date_utc - datetime.utcnow()
+        account_age = datetime.now(pytz.timezone('America/New_York')) - creation_date_utc
         if follower['statuses_count'] > 20 and follower['followers_count'] > 0:
             if account_age.days > 365:
                 return True
+        return False
 
     def filter_follower(self, handle):
         filter_df = self.sheets.get_df()
