@@ -1,9 +1,10 @@
+from operator import truediv
 import os, json, pytz
 import pandas as pd
 from re import U
 from flask import Flask
 import tweepy, config, sheets
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -21,7 +22,7 @@ class TwitterWrapper(object):
                 filter={'screen_name': screen_name},
                 update={'$unset': {'followers': ''}}
             )
-            app.logger.info('Deleted {0}'.format(results))
+            app.logger.debug('Deleted {0}'.format(results))
         else:
             if not user_id:
                 user_id = self.user_id
@@ -29,7 +30,7 @@ class TwitterWrapper(object):
                 filter={'user_id': user_id},
                 update={'$unset': {'followers': ''}}
             )
-            app.logger.info('Deleted {0}'.format(results))
+            app.logger.debug('Deleted {0}'.format(results))
 
     def dedup_followers(self, user_id=None):
         users = None
@@ -40,43 +41,28 @@ class TwitterWrapper(object):
         for user in users:
             pass
 
-    def _check_follower_exists(self, user_id, follower):
-        exists = None
+    def _check_follower_exists(self, user_id, follower: tweepy.models.User):
         try:
             exists = self.db.users.find_one(
                 filter={
-                    'user_id': {
-                        '$eq': user_id,
-                        '$elemMatch': {'id': follower['id']}
-                    }
+                    'user_id': user_id,
+                    'followers.id': follower.id
                 }
-                # array_filters={[ 
-                #     { "followers.id": { '$eq': follower['id'] } } 
-                # ]}
             )
+            if exists:
+                app.logger.debug('Follower {0} exists.'.format(follower['screen_name']))
+                return True
+            else:
+                return False
+            # for old_follower in self.get_old_followers(user_id):
+            #     if old_follower['id'] == follower.id:
+            #         return True
+            #     else:
+            #         return False
         except Exception as e:
+            raise e
             app.logger.error(e)
-        follower_json = follower._json
-        follower_json['messaged'] = False
-        if exists:
-            self.db.users.update_one(
-                filter={'user_id': user_id},
-                update={
-                    '$set': {'followers.$[element]': follower._json}
-                },
-                array_filters={[ 
-                    { "element.id": { '$eq': follower['id'] } } 
-                ]},
-                upsert=False
-            )
-        else:
-            self.db.users.update_one(
-                filter={'user_id': user_id},
-                update={
-                    '$addToSet': {'followers': follower._json}
-                },
-                upsert=False
-            )
+            return True
 
     def get_new_followers(self, user_id=None, handle=None) -> None:
         if not user_id:
@@ -86,33 +72,40 @@ class TwitterWrapper(object):
         followers = []
         for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
             for follower in page:
-                # app.logger.info(follower)
-                # follower['user_id'] = follower['id_str'] + ':follower'
-                # followers.append(follower._json)
-                self._check_follower_exists(user_id, follower)
+                exists = self._check_follower_exists(user_id, follower)
+                follower_json = follower._json
+                follower_json['messaged'] = False
+                if exists:
+                    app.logger.debug('Follower {0} exists.'.format(follower.screen_name))
+                    # self.db.users.update_one(
+                    #     filter={'user_id': user_id},
+                    #     update={
+                    #         '$set': {'followers.$[element]': follower_json}
+                    #     },
+                    #     array_filters={[ 
+                    #         { "element.id": { '$eq': follower['id'] } } 
+                    #     ]},
+                    #     upsert=False
+                    # )
+                else:
+                    self.db.users.update_one(
+                        filter={'user_id': user_id},
+                        update={
+                            '$addToSet': {'followers': follower_json}
+                        },
+                        upsert=False
+                    )
             # followers.extend(page)
             # app.logger.info(followers)
-        # app.logger.info(self.db.users.find_one(filter={'user_id': user_id}))
         app.logger.info('Got {0} followers.'.format(len(followers)))
 
     def seed_db(self, user_id):
         old = self.get_old_followers(user_id)
         if not old:
             new = self.get_new_followers(user_id)
-            self.save_followers(user_id, new)
 
     def get_old_followers(self, user_id):
-        ids = []
         user = self.db.users.find_one(filter={'user_id': user_id})
-        try:
-            followers = user['followers']
-            for follower in followers:
-                ids.append(follower['id_str'])
-                # app.logger.info(follower[0]['id_str'])
-            # app.logger.info('Old followers: {0}'.format(ids))
-        except Exception as e:
-            raise e
-        # return ids
         return user['followers']
 
     def generate_dm_text(self, user_id=None):
@@ -124,6 +117,7 @@ class TwitterWrapper(object):
             users = self.db.users.find(filter={'user_id': user_id})
         else:
             users = self.db.users.find({'user_id': user_id})
+        self.sheets.update()
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
             # app.logger.info('Getting script for {0}: {1}'.format(user['screen_name'], script))
@@ -139,17 +133,21 @@ class TwitterWrapper(object):
         cta_labels = ['CTA 1 Label', 'CTA 2 Label', 'CTA 3 Label']
         cta_urls = ['CTA 1 Url', 'CTA 2 Url', 'CTA 3 Url']
         ctas = []
+        app.logger.debug('Client row: {0}'.format(client_row))
         for label_col, url_col in zip(cta_labels, cta_urls):
-            match = client_row[label_col].str.match('[a-z0-9]*', case=False)
-            if match.all():
-                if len(client_row[label_col][0]) > 36:
+            alpha = client_row[label_col].str.match('[a-z0-9]*', case=False)
+            has_empty_label = client_row[label_col].str.isspace()
+            has_empty_url = client_row[url_col].str.isspace()
+            if alpha.all() and not has_empty_label.any() and not has_empty_url.any():
+                if len(client_row[label_col]) > 36:
                     app.logger.error("{0} too long!".format(label_col))
                 else:
                     ctas.append({
                         "type": "web_url",
-                        "label": client_row[label_col][0],
-                        "url": client_row[url_col][0]
+                        "label": client_row[label_col].iat[0],
+                        "url": client_row[url_col].iat[0]
                     })
+                app.logger.debug('CTAs: {0}'.format(ctas))
         return ctas
 
     def direct_message(self, from_userid=None, to_userid=None):
@@ -159,8 +157,8 @@ class TwitterWrapper(object):
         self.generate_dm_text(to_userid)
         user = self.db.users.find_one({'user_id': self.user_id})
         dm_text = user['script']
-        ctas = self.construct_ctas(self.user_id)
-        # self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+        ctas = self.construct_ctas(user['screen_name'])
+        self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
         result = self.db.users.update_many(
             filter={
                 'user_id': user['user_id'],
@@ -170,17 +168,15 @@ class TwitterWrapper(object):
             # array_filters=[{ 'element.id': { '$eq': to_userid } }],
             # upsert=True
         )
-        app.logger.info(result.raw_result)
-        app.logger.info('Sent message from {0} to {1}'.format(
+        app.logger.debug(result.raw_result)
+        app.logger.debug('Sent message from {0} to {1}'.format(
             user['screen_name'],
             to_userid
         ))
 
-    def filter_inactive(self, follower):
-        """
-        Filter out new accounts, accounts with zero followers
-        and accounts with fewer than 20 tweets
-        """
+    def filter_inactive(self, client, follower):
+        filter_df = self.sheets.get_df()
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Account Age'][0]
         creation_date_utc = pd.to_datetime(
             follower['created_at'], 
             # "Mon Nov 29 21:18:15 +0000 2010"
@@ -188,24 +184,52 @@ class TwitterWrapper(object):
             utc=True
         )
         account_age = datetime.now(pytz.timezone('America/New_York')) - creation_date_utc
-        if follower['statuses_count'] > 20 and follower['followers_count'] > 0:
-            if account_age.days > 365:
-                return True
+        if account_age / timedelta(weeks=1) > float(client_filter):
+            return True
         return False
 
-    def filter_follower(self, handle):
+    def filter_status_count(self, client, follower):
         filter_df = self.sheets.get_df()
-        filter_df[filter_df['Handle'] == handle]
-        pass
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Posts'][0]
+        if follower['statuses_count'] > int(client_filter):
+            return True
+        return False
+
+    def filter_follower_count(self, client, follower):
+        filter_df = self.sheets.get_df()
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Followers'][0]
+        if follower['followers_count'] > int(client_filter):
+            return True
+        return False
+
+    def filter_blocked(self, client, follower):
+        blocklist = self.sheets.get_blocklist(client)
+        blocked = False
+        try:
+            blocked = blocklist.str.contains(follower['screen_name']).any()
+        except Exception as e:
+            app.logger.error(e)
+            return False
+        return blocked
 
     def direct_message_all_followers(self):
         user_id = self.user_id
         user = self.db.users.find_one({'user_id': self.user_id})
-        blocklist = self.sheets.get_blocklist(user['screen_name'])
+        self.sheets.update()
+        client = user['screen_name']
         for follower in self.get_old_followers(user_id):
-            blocked = blocklist.str.contains(follower['screen_name']).any()
-            inactive = self.filter_inactive(follower)
-            if blocked or inactive:
-                app.logger.info('Follower {0} is blocked.'.format(follower['screen_name']))
-            else:
+            self.sheets.update()
+            blocked = self.filter_blocked(client, follower)
+            active = self.filter_inactive(client, follower)
+            enough_posts = self.filter_status_count(client, follower)
+            enough_followers = self.filter_follower_count(client, follower)
+            messaged = follower['messaged']
+            if not messaged and not blocked and active and enough_posts and enough_followers:
+                app.logger.debug('Follower {0} passed filters: {1} {2} {3} {4}'.format(
+                    follower['screen_name'], blocked, active, enough_posts, enough_followers
+                ))
                 self.direct_message(self.user_id, follower['id'])
+            else:
+                app.logger.info(
+                    'Follower {0} has been messaged, blocked or filtered out.'.format(follower['screen_name'])
+                )

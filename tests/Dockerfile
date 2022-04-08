@@ -10,6 +10,8 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 RUN pip3 install pytest
 
+RUN pip3 install pytest-mock
+
 ENV PYTHONPATH /app
 
 COPY ./bots /app

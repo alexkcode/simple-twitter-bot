@@ -21,14 +21,13 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 logging.basicConfig(
     filename='error.log', 
     filemode='w', 
-    level=logging.DEBUG, 
+    level=logging.WARNING, 
     format=LOG_FORMAT
 )
 
 def get_scheduler():
     if not 'scheduler' in g:
         g.scheduler = BackgroundScheduler()
-        # g.scheduler = APScheduler()
     return g.scheduler
 
 def get_db():
@@ -112,15 +111,10 @@ def verify_pin(auth, pin, user_id="none"):
                 filter={'user_id': user.id},
                 update={
                     '$setOnInsert': db_user
-                    # '$setOnInsert': {'followers': []}
                 },
                 upsert=True
             )
             app.logger.info("Twitter account {0}: {1}".format(user.id, result))
-            # if get_db().users.find_one({'user_id': user.id}):
-            #     app.logger.info("Twitter account {0} exists.".format(user.id))
-            # else:
-            #     app.logger.info(get_db().users.insert_one(db_user))
     except tweepy.errors.Unauthorized as e:
         app.logger.error(e)
         app.logger.error("Please check your access tokens.")
@@ -153,21 +147,18 @@ def job(screen_name):
             api = tweepy.API(auth)
             app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
             tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
-            tww.delete_followers(user_id=user['user_id'])
+            # tww.delete_followers(user_id=user['user_id'])
             tww.get_new_followers()
-            app.logger.info(get_shw().get_script(user['screen_name']))
             tww.generate_dm_text(user['user_id'])
-            app.logger.info('Follower IDs for {0}: {1}'.format(
+            app.logger.debug('Follower IDs for {0}: {1}'.format(
                 user['screen_name'], 
                 tww.get_old_followers(user['user_id'])
             ))
-            app.logger.info('Script for {0}: {1}'.format(
+            app.logger.debug('Script for {0}: {1}'.format(
                 user['user_id'], 
                 get_db().users.find_one({'user_id': user['user_id']})['script']
             ))
-            # tww.direct_message(tww.get_old_followers(user['user_id'])[0])
             tww.direct_message_all_followers()
-            # user = get_db().users.find_one({'user_id': user['user_id']})
     except Exception as e:
         # app.logger.error(e)
         app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
@@ -185,8 +176,6 @@ def start_job(user_id):
                 'user_id': user_id
             }
         )
-        # if not user:
-        #     return "USER NOT FOUND. DID YOU INPUT USER ID???"
         running_job = get_db().jobs.find_one(
             filter={
                 'user_id': user_id
@@ -194,20 +183,19 @@ def start_job(user_id):
         )
         message = ''
         if running_job:
-        # if False:
             message = 'JOB FOR TWITTER USER {0} EXISTS.\n{1}'.format(
                 user['screen_name'],
                 running_job
             )
         else:
-            # scheduler = get_scheduler()
             scheduled_job = scheduler.add_job(
                 func=job, 
                 replace_existing=True,
-                # args=[user['screen_name']],
                 kwargs={'screen_name': user['screen_name']},
-                # trigger="interval", 
-                # seconds=10,
+                trigger="interval", 
+                days=1,
+                # seconds=30,
+                start_date=datetime.now(),
                 id=user['screen_name']
             )
             app.logger.info('Current jobs: {0}'.format(scheduler.get_jobs()))
@@ -237,6 +225,7 @@ def stop_job(user_id):
         existing_job = scheduler.get_job(db_job['job_id'])
         app.logger.info('EXISTING JOB : {0}'.format(existing_job))
         deleted_job = get_db().jobs.find_one_and_delete(filter)
+        removed_job = None
         if existing_job:
             removed_job = scheduler.remove_job(existing_job['job_id'])
         app.logger.warning(
@@ -315,7 +304,12 @@ def check_sheet():
         app.logger.info("GOOGLE SHEETS CHECK SUCCEEDED")
 
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
-scheduler.add_job(func=check_sheet, trigger="interval", seconds=30)
+scheduler.add_job(
+    func=check_sheet, 
+    trigger="interval", 
+    seconds=30,
+    start_date=datetime.now()
+)
 scheduler.start(paused=False)
 
 atexit.register(lambda: scheduler.shutdown())

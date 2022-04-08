@@ -1,5 +1,10 @@
-import pytest
+import pytest, mock
+from pytest_mock import mocker 
 import twitter
+
+@pytest.fixture()
+def shw(mocker):
+    pass
 
 @pytest.fixture()
 def tww():

@@ -42,12 +42,14 @@ class SheetsWrapper(object):
                 ws = self.sh.get_worksheet(0)
                 ws.update_title("Scripts")
                 ws.batch_update([{
-                    'range': 'A1:J1',
+                    'range': 'A1:M1',
                     'values': [[
                         'ID','Handle', 'Script', 'Job', 
                         'CTA 1 Label', 'CTA 1 Url', 
                         'CTA 2 Label', 'CTA 2 Url', 
-                        'CTA 3 Label', 'CTA 3 Url'
+                        'CTA 3 Label', 'CTA 3 Url',
+                        'Minimum Posts', 'Minimum Followers',
+                        'Minimum Account Age'
                     ]],
                 }])
                 self.create_blocklist()
@@ -91,6 +93,7 @@ class SheetsWrapper(object):
         sheet["title"] = sh.title
         sheet["url"] = sh.url
         sh.share(app.config['EMAIL1'], perm_type='user', role='writer')
+        sh.share(app.config['EMAIL2'], perm_type='user', role='writer')
         self.db.sheets.insert_one(sheet)
         app.logger.warning("Old sheet was not found. Created new sheet {0}.".format(sheet))
 
@@ -109,7 +112,7 @@ class SheetsWrapper(object):
             permissions=None
         )
         self._df = gsp.sheet_to_df(index=None)
-        app.logger.info(self._df)
+        app.logger.debug('Sheets df: {0}'.format(self._df))
         gsp = Spread(
             self.sh_url, 
             sheet='Blocklist', 
@@ -144,11 +147,11 @@ class SheetsWrapper(object):
 
     def get_script(self, handle):
         # ws = self.sh.get_worksheet(0)
-        self.update()
+        # self.update()
         return self._df[self._df['Handle'] == handle]['Script']
 
     def job_status(self, handle):
-        self.update()
+        # self.update()
         return self._df[self._df['Handle'] == handle]['Job']
 
     def set_userids(self):
@@ -171,9 +174,9 @@ class SheetsWrapper(object):
             app.logger.warning(e)
 
     def get_blocklist(self, handle):
-        self.update()
+        # self.update()
         return self._blocklist[handle]
 
     def get_df(self):
-        self.update()
+        # self.update()
         return self._df
