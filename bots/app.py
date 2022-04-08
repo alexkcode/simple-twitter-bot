@@ -18,11 +18,14 @@ app.config.from_object('config.Config')
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
+fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
 logging.basicConfig(
-    filename='error.log', 
-    filemode='w', 
+    # filename='error.log', 
+    # filemode='w', 
     level=logging.WARNING, 
-    format=LOG_FORMAT
+    format=LOG_FORMAT,
+    datefmt='%m-%d-%y %H:%M:%S',
+    handlers=[fh]
 )
 
 def get_scheduler():
