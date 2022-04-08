@@ -3,9 +3,8 @@ APScheduler
 Flask-APScheduler
 # tweepy==3.10.0
 tweepy
-# pymongo
-# Flask-PyMongo
-redis
+pymongo
+Flask-PyMongo
 python-dotenv
 pandas
 google-auth

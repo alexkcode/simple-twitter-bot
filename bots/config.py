@@ -1,7 +1,6 @@
 import tweepy
 from flask import Flask, request, redirect, Response, logging, g
 import os
-import redis
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,6 +14,7 @@ class Config(object):
     CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
     BEARER_TOKEN = os.getenv('BEARER_TOKEN')
     EMAIL1 = os.getenv('EMAIL1')
+    EMAIL2 = os.getenv('EMAIL2')
     # make sure to update this!
     CRED_LOCATION = 'service_account_token.json'
 

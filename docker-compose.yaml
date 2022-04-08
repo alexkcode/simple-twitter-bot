@@ -2,29 +2,27 @@ version: '3'
 
 services:
 
-  # mongodb:
-  #   image: mongo:latest
-  #   hostname: mongodb
-  #   ports:
-  #       - '27017:27017'
-  #   environment:
-  #       - MONGO_REPLICA_SET_NAME=dan
-  #   command:
-  #       - --storageEngine
-  #       - wiredTiger
-  #       - --replSet
-  #       - myrepl
-  #   healthcheck:
-  #       test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo  --quiet) -eq 1
-  #       interval: 10s
-  #       start_period: 30s
-
-  redis-server:
-    image: redis:latest
-    hostname: redis
+  mongodb:
+    image: mongo:latest
+    hostname: mongodb
+    ports:
+        - '27017:27017'
+    volumes:
+        - ./data/db:/data/db        
+    environment:
+        MONGO_DATA_DIR: /data/db
+    # command:
+    #     - --storageEngine
+    #     - wiredTiger
+    #     - --replSet
+    #     - myrepl
+    restart: always
+    healthcheck:
+        test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo  --quiet) -eq 1
+        interval: 10s
+        start_period: 30s
 
   flask:
-    # image: 'alexkcode/webhook-flask-listener:latest'
     build:
       context: bots
       dockerfile: Dockerfile
