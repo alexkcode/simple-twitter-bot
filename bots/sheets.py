@@ -49,7 +49,7 @@ class SheetsWrapper(object):
                         'CTA 2 Label', 'CTA 2 Url', 
                         'CTA 3 Label', 'CTA 3 Url',
                         'Minimum Posts', 'Minimum Followers',
-                        'Minimum Account Age'
+                        'Minimum Account Age (weeks)'
                     ]],
                 }])
                 self.create_blocklist()
