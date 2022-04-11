@@ -56,24 +56,11 @@ class SheetsWrapper(object):
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
                     app.logger.info("Successfully acquired spreadsheet instance.")
         except Exception as e:
-            # self.create_config_sheet()
             raise e
 
     def create_token(self):
         if os.path.exists(self.cred_location) and not self.creds:
             self.creds = Credentials.from_service_account_file(self.cred_location, scopes=self.scopes)
-        # If there are no (valid) credentials available, let the user log in.
-        # if not self.creds or not self.creds.valid:
-        #     print('No token found')
-        #     if creds and creds.expired and creds.refresh_token:
-        #         creds.refresh(Request())
-        #     else:
-        #         flow = InstalledAppFlow.from_client_secrets_file(
-        #             self.cred_location, self.scopes)
-        #         creds = flow.run_local_server(port=8000)
-        #     # Save the credentials for the next run
-        #     with open(self.token_location, 'w') as token:
-        #         token.write(creds.to_json())
 
     def get_gspread(self):
         with app.app_context():

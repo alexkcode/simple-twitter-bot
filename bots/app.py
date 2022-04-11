@@ -18,11 +18,11 @@ app.config.from_object('config.Config')
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
-fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
+fh = logging.handlers.TimedRotatingFileHandler('error.log', when='H', interval=2)
 logging.basicConfig(
     # filename='error.log', 
     # filemode='w', 
-    level=logging.WARNING, 
+    level=logging.DEBUG, 
     format=LOG_FORMAT,
     datefmt='%m-%d-%y %H:%M:%S',
     handlers=[fh]
@@ -196,7 +196,8 @@ def start_job(user_id):
                 replace_existing=True,
                 kwargs={'screen_name': user['screen_name']},
                 trigger="interval", 
-                days=1,
+                # days=1,
+                hours=2,
                 # seconds=30,
                 start_date=datetime.now(),
                 id=user['screen_name']

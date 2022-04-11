@@ -50,19 +50,12 @@ class TwitterWrapper(object):
                 }
             )
             if exists:
-                app.logger.debug('Follower {0} exists.'.format(follower['screen_name']))
+                app.logger.debug('Follower {0} exists.'.format(follower.screen_name))
                 return True
             else:
                 return False
-            # for old_follower in self.get_old_followers(user_id):
-            #     if old_follower['id'] == follower.id:
-            #         return True
-            #     else:
-            #         return False
         except Exception as e:
             raise e
-            app.logger.error(e)
-            return True
 
     def get_new_followers(self, user_id=None, handle=None) -> None:
         if not user_id:
@@ -97,7 +90,7 @@ class TwitterWrapper(object):
                     )
             # followers.extend(page)
             # app.logger.info(followers)
-        app.logger.info('Got {0} followers.'.format(len(followers)))
+        app.logger.info('Got {0} new followers.'.format(len(followers)))
 
     def seed_db(self, user_id):
         old = self.get_old_followers(user_id)
@@ -135,10 +128,10 @@ class TwitterWrapper(object):
         ctas = []
         app.logger.debug('Client row: {0}'.format(client_row))
         for label_col, url_col in zip(cta_labels, cta_urls):
-            alpha = client_row[label_col].str.match('[a-z0-9]*', case=False)
-            has_empty_label = client_row[label_col].str.isspace()
-            has_empty_url = client_row[url_col].str.isspace()
-            if alpha.all() and not has_empty_label.any() and not has_empty_url.any():
+            alpha = client_row[label_col].str.match('[a-z0-9]+', case=False)
+            has_label = len(client_row[label_col].iat[0].strip()) > 0
+            has_url = len(client_row[url_col].iat[0].strip()) > 0
+            if alpha.all() and has_label and has_url:
                 if len(client_row[label_col]) > 36:
                     app.logger.error("{0} too long!".format(label_col))
                 else:
@@ -176,7 +169,7 @@ class TwitterWrapper(object):
 
     def filter_inactive(self, client, follower):
         filter_df = self.sheets.get_df()
-        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Account Age'][0]
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Account Age (weeks)'][0]
         creation_date_utc = pd.to_datetime(
             follower['created_at'], 
             # "Mon Nov 29 21:18:15 +0000 2010"
