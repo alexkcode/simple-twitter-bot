@@ -1,6 +1,6 @@
 import flask, os, secrets, gspread
 from datetime import datetime
-from flask import Flask, request, g, session, render_template, after_this_request
+from flask import Flask, request, g, session, render_template, redirect
 import logging, tweepy
 import twitter, config, sheets
 import atexit
@@ -20,8 +20,6 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 fh = logging.handlers.TimedRotatingFileHandler('error.log', when='H', interval=2)
 logging.basicConfig(
-    # filename='error.log', 
-    # filemode='w', 
     level=logging.DEBUG, 
     format=LOG_FORMAT,
     datefmt='%m-%d-%y %H:%M:%S',
@@ -128,10 +126,6 @@ def verify_pin(auth, pin, user_id="none"):
         app.logger.info("API created")
     return api
 
-@app.route("/")
-def index():
-    return "OK"
-
 def job(screen_name):
     try:
         with app.app_context():
@@ -197,8 +191,8 @@ def start_job(user_id):
                 kwargs={'screen_name': user['screen_name']},
                 trigger="interval", 
                 # days=1,
-                hours=2,
-                # seconds=30,
+                # hours=2,
+                seconds=60,
                 start_date=datetime.now(),
                 id=user['screen_name']
             )
@@ -245,19 +239,38 @@ def stop_job(user_id):
 
 @app.route("/stop_all")
 def stop_all():
-    for job in get_db().jobs.find():
-        removed_job = get_scheduler().remove_job(job['job_id'])
+    try:
+        for job in get_db().jobs.find():
+            removed_job = get_scheduler().remove_job(job['job_id'])
         deleted_job = get_db().jobs.delete_many({})
-    return "ALL JOBS DELETED."
+        scheduler.shutdown()
+    except Exception as e:
+        return "NO JOBS TO DELETE.\n{0}".format(e)
+    else:    
+        return "ALL JOBS STOPPED AND DELETED. JOB SCHEDULER HAS STOPPED."
 
 @app.route("/delete_followers/<screen_name>")
 def delete_followers(screen_name):
-    tww = get_tww(screen_name)
-    tww.delete_followers(screen_name=screen_name)
-    return "Removed followers for {0} from the DB.".format(screen_name)
+    try:
+        tww = get_tww(screen_name)
+        tww.delete_followers(screen_name=screen_name)
+    except Exception as e:
+        return "User {0} not found.\n{1}".format(screen_name, e)
+    else:
+        return "Removed followers for {0} from the database.".format(screen_name)
 
-@app.route("/test/<screen_name>/<follower>")
-def test(screen_name, follower):
+@app.route("/delete_client/<screen_name>")
+def delete_client(screen_name):
+    try:
+        user = get_db().users.find_one({'screen_name':screen_name})
+        deleted_user = get_db().users.find_one_and_delete({'user_id': user['id']})
+    except Exception as e:
+        return "User {0} not found.\n{1}".format(screen_name, e)
+    else:
+        return "Removed client {0} from the database.".format(deleted_user['screen_name'])
+
+@app.route("/set_messaged/<screen_name>/<follower>")
+def set_messaged(screen_name, follower):
     result = get_db().users.find_one_and_update(
         filter={
             'screen_name': screen_name,
@@ -279,13 +292,28 @@ def authorize():
             pin)
         user_tokens = g.db.users.find_one()
         if len(user_tokens) > 0:
-            return "OK"
+            return "AUTHORIZED"
         else:
             return "NOT AUTHORIZED" 
     auth = get_auth()
     auth_url = auth.get_authorization_url()
     session['oauth'] = auth.request_token
     return render_template('authorize.html', auth_url=auth_url) 
+
+def start_scheduler():
+    try:
+        scheduler.start(paused=False)
+        scheduler.add_job(
+            func=check_sheet, 
+            trigger="interval", 
+            seconds=30,
+            start_date=datetime.now()
+        )
+    except Exception as e:
+        with app.app_context():
+            app.logger.error(e)
+    finally:
+        return "JOB SCHEDULER RESTARTED"
 
 def check_sheet():
     try:
@@ -315,6 +343,17 @@ scheduler.add_job(
     start_date=datetime.now()
 )
 scheduler.start(paused=False)
+
+@app.route("/", methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        if request.form['submit_button'] == 'STOP ALL JOBS':
+            return stop_all()
+        if request.form['submit_button'] == 'RESTART ALL JOBS':
+            return start_scheduler()
+        if request.form['submit_button'] == 'AUTHORIZE NEW CLIENT':
+            return redirect('/authorize/') 
+    return render_template('index.html')
 
 atexit.register(lambda: scheduler.shutdown())
 
