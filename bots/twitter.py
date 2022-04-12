@@ -151,7 +151,10 @@ class TwitterWrapper(object):
         user = self.db.users.find_one({'user_id': self.user_id})
         dm_text = user['script']
         ctas = self.construct_ctas(user['screen_name'])
-        self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+        if len(ctas) > 0:
+            self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+        else:
+            self.api.send_direct_message(to_userid, text=dm_text)
         result = self.db.users.update_many(
             filter={
                 'user_id': user['user_id'],
