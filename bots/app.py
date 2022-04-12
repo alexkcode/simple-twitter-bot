@@ -18,9 +18,9 @@ app.config.from_object('config.Config')
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
-fh = logging.handlers.TimedRotatingFileHandler('error.log', when='H', interval=2)
+fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
 logging.basicConfig(
-    level=logging.DEBUG, 
+    level=logging.WARNING, 
     format=LOG_FORMAT,
     datefmt='%m-%d-%y %H:%M:%S',
     handlers=[fh]
@@ -374,4 +374,4 @@ def index():
 atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(port=5000, debug=False)

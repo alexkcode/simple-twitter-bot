@@ -88,14 +88,7 @@ class TwitterWrapper(object):
                         },
                         upsert=False
                     )
-            # followers.extend(page)
-            # app.logger.info(followers)
         app.logger.info('Got {0} new followers.'.format(len(followers)))
-
-    def seed_db(self, user_id):
-        old = self.get_old_followers(user_id)
-        if not old:
-            new = self.get_new_followers(user_id)
 
     def get_old_followers(self, user_id):
         user = self.db.users.find_one(filter={'user_id': user_id})
