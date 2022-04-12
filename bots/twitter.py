@@ -197,7 +197,7 @@ class TwitterWrapper(object):
 
     def filter_blocked(self, client, follower):
         blocklist = self.sheets.get_blocklist(client)
-        blocked = False
+        blocked = True
         try:
             blocked = blocklist.str.contains(follower['screen_name']).any()
         except Exception as e:

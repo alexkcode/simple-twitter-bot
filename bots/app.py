@@ -321,13 +321,20 @@ def check_sheet():
         with app.app_context():
             get_shw().update()
             for user in get_db().users.find():
-                status = get_shw().job_status(user['screen_name']).str.lower()[0]
-                app.logger.info('Job status : {0}'.format(status))
-                if status:
-                    if status == 'start':
-                        start_job(user['user_id'])
-                    else:
-                        stop_job(user['user_id'])
+                status = False
+                try:
+                    status = get_shw().job_status(user['screen_name']).iat[0]
+                    app.logger.info('Job status : {0}'.format(status))
+                except Exception as e:
+                    app.logger.error(
+                        'Job status for clients not found or no clients found. \n{0}'.format(e)
+                    )
+                else:
+                    if status:
+                        if status == 'start':
+                            start_job(user['user_id'])
+                        else:
+                            stop_job(user['user_id'])
             scheduler.print_jobs()
     except Exception as e:
         app.logger.error("GOOGLE SHEETS CHECK FAILED at {0}".format(datetime.now()))
