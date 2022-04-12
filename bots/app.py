@@ -330,9 +330,8 @@ def check_sheet():
                         'Job status for clients not found or no clients found. \n{0}'.format(e)
                     )
                 else:
-                    if status:
-                        if status == 'start':
-                            start_job(user['user_id'])
+                    if status == 'start':
+                        start_job(user['user_id'])
                     else:
                         stop_job(user['user_id'])
             scheduler.print_jobs()
