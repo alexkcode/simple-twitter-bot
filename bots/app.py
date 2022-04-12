@@ -358,6 +358,11 @@ def index():
             return stop_all()
         if request.form['submit_button'] == 'RESTART ALL JOBS':
             return start_scheduler()
+        if request.form['submit_button'] == 'CURRENT JOBS':
+            jobs = []
+            for doc in get_db().jobs.find({}):
+                jobs.append(doc)
+            return 'Current jobs: {0}'.format(jobs)
         if request.form['submit_button'] == 'AUTHORIZE NEW CLIENT':
             return redirect('/authorize/') 
     return render_template('index.html')
