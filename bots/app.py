@@ -321,7 +321,7 @@ def check_sheet():
         with app.app_context():
             get_shw().update()
             for user in get_db().users.find():
-                status = False
+                status = None
                 try:
                     status = get_shw().job_status(user['screen_name']).iat[0]
                     app.logger.info('Job status : {0}'.format(status))
@@ -333,8 +333,8 @@ def check_sheet():
                     if status:
                         if status == 'start':
                             start_job(user['user_id'])
-                        else:
-                            stop_job(user['user_id'])
+                    else:
+                        stop_job(user['user_id'])
             scheduler.print_jobs()
     except Exception as e:
         app.logger.error("GOOGLE SHEETS CHECK FAILED at {0}".format(datetime.now()))
