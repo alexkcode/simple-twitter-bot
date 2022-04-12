@@ -359,10 +359,13 @@ def index():
             return start_scheduler()
         if request.form['submit_button'] == 'CURRENT JOBS':
             jobs = []
-            for doc in get_db().jobs.find({}):
-                user = get_db().users.find_one({'id': doc['user_id']})
-                doc['handle'] = user['screen_name']
-                jobs.append(doc)
+            try:
+                for doc in get_db().jobs.find({}):
+                    user = get_db().users.find_one({'id': doc['user_id']})
+                    doc['handle'] = user['screen_name']
+                    jobs.append(doc)
+            except Exception as e:
+                app.logger.error('Error when checking current jobs: {0}'.format(e))
             return 'Current jobs: {0}'.format(jobs)
         if request.form['submit_button'] == 'AUTHORIZE NEW CLIENT':
             return redirect('/authorize/') 
