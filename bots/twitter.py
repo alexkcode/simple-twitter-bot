@@ -140,7 +140,7 @@ class TwitterWrapper(object):
                         "label": client_row[label_col].iat[0],
                         "url": client_row[url_col].iat[0]
                     })
-                app.logger.debug('CTAs: {0}'.format(ctas))
+            app.logger.debug('CTAs: {0}'.format(ctas))
         return ctas
 
     def direct_message(self, from_userid=None, to_userid=None):
@@ -152,7 +152,8 @@ class TwitterWrapper(object):
         dm_text = user['script']
         ctas = self.construct_ctas(user['screen_name'])
         if len(ctas) > 0:
-            self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+            if ctas[0] or ctas[1] or ctas[2]:
+                self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
         else:
             self.api.send_direct_message(to_userid, text=dm_text)
         result = self.db.users.update_many(
