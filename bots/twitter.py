@@ -151,21 +151,25 @@ class TwitterWrapper(object):
         user = self.db.users.find_one({'user_id': self.user_id})
         dm_text = user['script']
         ctas = self.construct_ctas(user['screen_name'])
-        if len(ctas) > 0:
-            if ctas[0] or ctas[1] or ctas[2]:
-                self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+        try:
+            if len(ctas) > 0:
+                if ctas[0]:
+                    self.api.send_direct_message(to_userid, text=dm_text, ctas=ctas)
+            else:
+                self.api.send_direct_message(to_userid, text=dm_text)
+        except Exception as e:
+            app.logger.error(e)
         else:
-            self.api.send_direct_message(to_userid, text=dm_text)
-        result = self.db.users.update_many(
-            filter={
-                'user_id': user['user_id'],
-                'followers.id': {'$eq': to_userid}
-            },
-            update={'$set': {'followers.$.messaged': True}},
-            # array_filters=[{ 'element.id': { '$eq': to_userid } }],
-            # upsert=True
-        )
-        app.logger.debug(result.raw_result)
+            result = self.db.users.update_many(
+                filter={
+                    'user_id': user['user_id'],
+                    'followers.id': {'$eq': to_userid}
+                },
+                update={'$set': {'followers.$.messaged': True}},
+                # array_filters=[{ 'element.id': { '$eq': to_userid } }],
+                # upsert=True
+            )
+            app.logger.debug(result.raw_result)
         app.logger.debug('Sent message from {0} to {1}'.format(
             user['screen_name'],
             to_userid
