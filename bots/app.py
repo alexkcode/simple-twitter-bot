@@ -1,5 +1,6 @@
 import flask, os, secrets, gspread
 from datetime import datetime
+from pytz import timezone
 from flask import Flask, request, g, session, render_template, redirect
 import logging, tweepy
 import twitter, config, sheets
@@ -129,7 +130,7 @@ def verify_pin(auth, pin, user_id="none"):
 def job(screen_name):
     try:
         with app.app_context():
-            app.logger.info("TWITTER JOB STARTING ...")
+            app.logger.warning("TWITTER JOB FOR {0} STARTING ...".format(screen_name))
             user = get_db().users.find_one({'screen_name':screen_name})
             id = str(user['user_id'])
             app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
@@ -163,7 +164,7 @@ def job(screen_name):
         raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
-        app.logger.info("TWITTER JOB SUCCEEDED")
+        app.logger.warning("TWITTER JOB FOR {0} SUCCEEDED".format(screen_name))
 
 @app.route("/start_job/<user_id>")
 def start_job(user_id):
@@ -189,11 +190,12 @@ def start_job(user_id):
                 func=job, 
                 replace_existing=True,
                 kwargs={'screen_name': user['screen_name']},
-                trigger="interval", 
-                # days=1,
-                # hours=2,
-                seconds=120,
-                start_date=datetime.now(),
+                trigger='cron', 
+                # day_of_week='mon-fri', 
+                hour='9-20', 
+                minute='0-59/2',
+                start_date=datetime.now(timezone('America/New_York')),
+                timezone=timezone('America/New_York'),
                 id=user['screen_name']
             )
             app.logger.info('Current jobs: {0}'.format(scheduler.get_jobs()))
