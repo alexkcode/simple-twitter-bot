@@ -293,8 +293,8 @@ def stop_all():
     with app.app_context():
         try:
             scheduler = get_scheduler()
-            for job in get_db().jobs.find():
-                removed_job = scheduler.remove_job(job['job_id'])
+            # for job in get_db().jobs.find():
+            #     removed_job = scheduler.remove_job(job['job_id'])
             scheduler.remove_all_jobs()
             deleted_job = get_db().jobs.delete_many({})
             scheduler.shutdown()
