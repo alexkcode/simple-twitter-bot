@@ -192,7 +192,7 @@ def start_job(user_id):
                 trigger="interval", 
                 # days=1,
                 # hours=2,
-                seconds=60,
+                seconds=120,
                 start_date=datetime.now(),
                 id=user['screen_name']
             )
