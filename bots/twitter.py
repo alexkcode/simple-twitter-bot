@@ -89,14 +89,12 @@ class TwitterWrapper(object):
         Generate DM text based on script from Google Drive
         """
         users = None 
-        self.sheets.update()
         if user_id:
             users = self.db.users.find(filter={'user_id': user_id})
         else:
             users = self.db.users.find({'user_id': user_id})
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
-            # app.logger.info('Getting script for {0}: {1}'.format(user['screen_name'], script))
             if script[0]:
                 self.db.users.find_one_and_update(
                     filter={'user_id': self.user_id},
