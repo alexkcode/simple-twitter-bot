@@ -93,7 +93,6 @@ class TwitterWrapper(object):
             users = self.db.users.find(filter={'user_id': user_id})
         else:
             users = self.db.users.find({'user_id': user_id})
-        self.sheets.update()
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
             # app.logger.info('Getting script for {0}: {1}'.format(user['screen_name'], script))
