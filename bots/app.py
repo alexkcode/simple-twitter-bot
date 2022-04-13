@@ -239,6 +239,7 @@ def stop_job(user_id):
         app.logger.warning(
             'No jobs to remove for user {0}. {1}'.format(user['screen_name'], e)
         )
+        raise e
 
 @app.route("/delete_followers/<screen_name>")
 def delete_followers(screen_name):
