@@ -223,7 +223,8 @@ def stop_job(user_id):
     user = get_db().users.find_one(filter)
     existing_job = None
     try:
-        existing_job = scheduler.get_job(db_job['job_id'])
+        if db_job:
+            existing_job = scheduler.get_job(db_job['job_id'])
         app.logger.info('EXISTING JOB : {0}'.format(existing_job))
         deleted_job = get_db().jobs.find_one_and_delete(filter)
         removed_job = None
