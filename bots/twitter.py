@@ -212,7 +212,6 @@ class TwitterWrapper(object):
         self.sheets.update()
         client = user['screen_name']
         for follower in self.get_old_followers(user_id):
-            self.sheets.update()
             blocked = self.filter_blocked(client, follower)
             active = self.filter_inactive(client, follower)
             enough_posts = self.filter_status_count(client, follower)
