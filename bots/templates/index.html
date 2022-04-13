@@ -6,13 +6,22 @@
     {% block body %}
     {% if error %}<p class="error"><strong>Error:</strong> {{ error }}{% endif %}
     <form method="post">
-        <input type="submit" class="btn btn-danger" name="submit_button" value="STOP ALL JOBS">
         <br>
-        <input type="submit" class="btn btn-warning" name="submit_button" value="RESTART ALL JOBS">
+        <div class="row">
+            <input type="submit" class="btn btn-danger" name="submit_button" value="STOP ALL JOBS">
+        </div>
         <br>
-        <input type="submit" class="btn btn-info" name="submit_button" value="CURRENT JOBS">
+        <div class="row">
+            <input type="submit" class="btn btn-warning" name="submit_button" value="RESTART ALL JOBS">
+        </div>
         <br>
-        <input type="submit" class="btn btn-primary" name="submit_button" value="AUTHORIZE NEW CLIENT">
+        <div class="row">
+            <input type="submit" class="btn btn-info" name="submit_button" value="CURRENT JOBS">
+        </div>
+        <br>
+        <div class="row">
+            <input type="submit" class="btn btn-primary" name="submit_button" value="AUTHORIZE NEW CLIENT">
+        </div>
     </form>
     {% endblock %}
   </div>

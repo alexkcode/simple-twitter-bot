@@ -4,16 +4,25 @@
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
 <div class="main-body">
   <div class="container">
-    {% block body %}
-    {% if error %}<p class="error"><strong>Error:</strong> {{ error }}{% endif %}
-    <a href="{{ auth_url }}" class="btn btn-link" target="_blank">Authorize with Twitter</a>
-    <form action="{{ url_for('authorize') }}" method="post">
-      <div class="form-group">
-        <label for="pin">Enter the Twitter PIN below:</label>
-        <input class="form-control" type="text" name="pin">
-      </div>
-      <button class="btn btn-default" type="submit">Authorize</button>
-    </form>
+    <br>
+    <div class="row">
+        {% block body %}
+        {% if error %}<p class="error"><strong>Error:</strong> {{ error }}{% endif %}
+        <p>1. Copy this url and send it to your client. 
+            Do not navigate away from this page, or you will need to restart the authorization process.</p>
+        <a href="{{ auth_url }}" target="_blank">Authorize with Twitter</a>
+    </div>
+    <br>
+    <div class="row">
+        <p>2. Get the PIN number from the client after they authorize and input it here.</p>
+        <form action="{{ url_for('authorize') }}" method="post">
+            <div class="form-group">
+            <label for="pin">Enter the Twitter PIN below:</label>
+            <input class="form-control" type="text" name="pin">
+            </div>
+            <button class="btn btn-default" type="submit">Authorize</button>
+        </form>
+    </div>
     {% endblock %}
   </div>
 </div>
