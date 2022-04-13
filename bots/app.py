@@ -329,6 +329,7 @@ def check_sheet():
                     app.logger.error(
                         'Job status for clients not found or no clients found. \n{0}'.format(e)
                     )
+                    stop_job(user['user_id'])
                 else:
                     if status == 'start':
                         start_job(user['user_id'])
