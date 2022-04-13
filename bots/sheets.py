@@ -26,7 +26,6 @@ class SheetsWrapper(object):
             self.cred_location = app.config['CRED_LOCATION']
         else:
             self.cred_location = cred_location
-        # self.token_location = 'token.json'
         self.scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'

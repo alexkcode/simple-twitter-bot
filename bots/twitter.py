@@ -70,16 +70,6 @@ class TwitterWrapper(object):
                 follower_json['messaged'] = False
                 if exists:
                     app.logger.debug('Follower {0} exists.'.format(follower.screen_name))
-                    # self.db.users.update_one(
-                    #     filter={'user_id': user_id},
-                    #     update={
-                    #         '$set': {'followers.$[element]': follower_json}
-                    #     },
-                    #     array_filters={[ 
-                    #         { "element.id": { '$eq': follower['id'] } } 
-                    #     ]},
-                    #     upsert=False
-                    # )
                 else:
                     self.db.users.update_one(
                         filter={'user_id': user_id},
@@ -158,9 +148,7 @@ class TwitterWrapper(object):
                     'user_id': user['user_id'],
                     'followers.id': {'$eq': to_userid}
                 },
-                update={'$set': {'followers.$.messaged': True}},
-                # array_filters=[{ 'element.id': { '$eq': to_userid } }],
-                # upsert=True
+                update={'$set': {'followers.$.messaged': True}}
             )
             app.logger.debug(result.raw_result)
         app.logger.debug('Sent message from {0} to {1}'.format(
