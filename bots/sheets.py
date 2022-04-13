@@ -20,8 +20,6 @@ class SheetsWrapper(object):
         self.gc = gc
         self.sh = None
         self.creds = None
-        self._scripts_id = None
-        self._blocklist_id = None
         if cred_location == None:
             self.cred_location = app.config['CRED_LOCATION']
         else:
