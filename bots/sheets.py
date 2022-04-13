@@ -140,7 +140,11 @@ class SheetsWrapper(object):
     def get_script(self, handle):
         # ws = self.sh.get_worksheet(0)
         # self.update()
-        return self._df[self._df['Handle'] == handle]['Script']
+        try:
+            return self._df[self._df['Handle'] == handle]['Script']
+        except Exception as e:
+            self.update()
+            app.logger.error(e)
 
     def job_status(self, handle):
         # self.update()
