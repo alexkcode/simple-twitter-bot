@@ -129,7 +129,7 @@ def verify_pin(auth, pin, user_id="none"):
 def job(screen_name):
     try:
         with app.app_context():
-            app.logger.info("TWITTER JOB STARTING ...")
+            app.logger.warning("TWITTER JOB STARTING ...")
             user = get_db().users.find_one({'screen_name':screen_name})
             id = str(user['user_id'])
             app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
@@ -163,7 +163,7 @@ def job(screen_name):
         raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
-        app.logger.info("TWITTER JOB SUCCEEDED")
+        app.logger.warning("TWITTER JOB SUCCEEDED")
 
 @app.route("/start_job/<user_id>")
 def start_job(user_id):
@@ -237,18 +237,6 @@ def stop_job(user_id):
             'No jobs to remove for user {0}. {1}'.format(user['screen_name'], e)
         )
 
-@app.route("/stop_all")
-def stop_all():
-    try:
-        for job in get_db().jobs.find():
-            removed_job = get_scheduler().remove_job(job['job_id'])
-        deleted_job = get_db().jobs.delete_many({})
-        scheduler.shutdown()
-    except Exception as e:
-        return "NO JOBS TO DELETE.\n{0}".format(e)
-    else:    
-        return "ALL JOBS STOPPED AND DELETED. JOB SCHEDULER HAS STOPPED."
-
 @app.route("/delete_followers/<screen_name>")
 def delete_followers(screen_name):
     try:
@@ -300,20 +288,37 @@ def authorize():
     session['oauth'] = auth.request_token
     return render_template('authorize.html', auth_url=auth_url) 
 
+@app.route("/stop_all")
+def stop_all():
+    with app.app_context():
+        try:
+            scheduler = get_scheduler()
+            for job in get_db().jobs.find():
+                removed_job = scheduler.remove_job(job['job_id'])
+            scheduler.remove_all_jobs()
+            deleted_job = get_db().jobs.delete_many({})
+            scheduler.shutdown()
+        except Exception as e:
+            return "NO JOBS TO DELETE.\n{0}".format(e)
+        else:    
+            return "ALL JOBS STOPPED AND DELETED. JOB SCHEDULER HAS STOPPED."
+
 def start_scheduler():
-    try:
-        scheduler.start(paused=False)
-        scheduler.add_job(
-            func=check_sheet, 
-            trigger="interval", 
-            seconds=30,
-            start_date=datetime.now()
-        )
-    except Exception as e:
-        with app.app_context():
-            app.logger.error(e)
-    finally:
-        return "JOB SCHEDULER RESTARTED"
+    with app.app_context():
+        try:
+            scheduler = get_scheduler()
+            scheduler.start(paused=False)
+            scheduler.add_job(
+                func=check_sheet, 
+                trigger="interval", 
+                seconds=30,
+                start_date=datetime.now()
+            )
+        except Exception as e:
+            with app.app_context():
+                app.logger.error(e)
+        else:
+            return "JOB SCHEDULER RESTARTED"
 
 def check_sheet():
     try:
@@ -342,14 +347,16 @@ def check_sheet():
     else:
         app.logger.info("GOOGLE SHEETS CHECK SUCCEEDED")
 
-# needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
-scheduler.add_job(
-    func=check_sheet, 
-    trigger="interval", 
-    seconds=30,
-    start_date=datetime.now()
-)
-scheduler.start(paused=False)
+with app.app_context():
+    scheduler = get_scheduler()
+    # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
+    scheduler.add_job(
+        func=check_sheet, 
+        trigger="interval", 
+        seconds=30,
+        start_date=datetime.now()
+    )
+    scheduler.start(paused=False)
 
 @app.route("/", methods=['GET', 'POST'])
 def index():

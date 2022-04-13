@@ -20,6 +20,8 @@ class SheetsWrapper(object):
         self.gc = gc
         self.sh = None
         self.creds = None
+        self._scripts_id = None
+        self._blocklist_id = None
         if cred_location == None:
             self.cred_location = app.config['CRED_LOCATION']
         else:
@@ -39,19 +41,21 @@ class SheetsWrapper(object):
                 self.sh_url = found_sheet['url']
                 app.logger.info('Reading from Google Sheet {0}'.format(self.sh_url))
                 self.sh = self.gc.open_by_url(self.sh_url)
-                ws = self.sh.get_worksheet(0)
-                ws.update_title("Scripts")
-                ws.batch_update([{
-                    'range': 'A1:M1',
-                    'values': [[
-                        'ID','Handle', 'Script', 'Job', 
-                        'CTA 1 Label', 'CTA 1 Url', 
-                        'CTA 2 Label', 'CTA 2 Url', 
-                        'CTA 3 Label', 'CTA 3 Url',
-                        'Minimum Posts', 'Minimum Followers',
-                        'Minimum Account Age (weeks)'
-                    ]],
-                }])
+                # ws = self.sh.get_worksheet(0)
+                # ws.update_title("Scripts")
+                # ws = self.sh.add_worksheet('Scripts', 100, 20)
+                # ws.batch_update([{
+                #     'range': 'A1:M1',
+                #     'values': [[
+                #         'ID','Handle', 'Script', 'Job', 
+                #         'CTA 1 Label', 'CTA 1 Url', 
+                #         'CTA 2 Label', 'CTA 2 Url', 
+                #         'CTA 3 Label', 'CTA 3 Url',
+                #         'Minimum Posts', 'Minimum Followers',
+                #         'Minimum Account Age (weeks)'
+                #     ]],
+                # }])
+                self.create_scripts_tab()
                 self.create_blocklist()
                 if isinstance(self.sh, gspread.spreadsheet.Spreadsheet):
                     app.logger.info("Successfully acquired spreadsheet instance.")
@@ -83,6 +87,24 @@ class SheetsWrapper(object):
         sh.share(app.config['EMAIL2'], perm_type='user', role='writer')
         self.db.sheets.insert_one(sheet)
         app.logger.warning("Old sheet was not found. Created new sheet {0}.".format(sheet))
+
+    def create_scripts_tab(self):
+        try:
+            ws = self.sh.worksheet('Scripts')
+            ws.batch_update([{
+                'range': 'A1:M1',
+                'values': [[
+                    'ID','Handle', 'Script', 'Job', 
+                    'CTA 1 Label', 'CTA 1 Url', 
+                    'CTA 2 Label', 'CTA 2 Url', 
+                    'CTA 3 Label', 'CTA 3 Url',
+                    'Minimum Posts', 'Minimum Followers',
+                    'Minimum Account Age (weeks)'
+                ]],
+            }])
+        except Exception as e:
+            ws = self.sh.add_worksheet('Scripts', 100, 20)
+            raise e
 
     def update(self):
         self.create_token()
@@ -151,14 +173,13 @@ class SheetsWrapper(object):
 
     def create_blocklist(self):
         try:
-            self.sh.add_worksheet("Blocklist", 1, 1)
+            self.sh.worksheet("Blocklist")
         except Exception as e:
+            self.sh.add_worksheet("Blocklist", 10, 10)
             if 'already exists' in str(e):
                 app.logger.warning(e)
             else:
                 raise e
-        except gspread.WorksheetNotFound as e:
-            app.logger.warning(e)
 
     def get_blocklist(self, handle):
         # self.update()
