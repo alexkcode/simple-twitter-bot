@@ -237,18 +237,6 @@ def stop_job(user_id):
             'No jobs to remove for user {0}. {1}'.format(user['screen_name'], e)
         )
 
-@app.route("/stop_all")
-def stop_all():
-    try:
-        for job in get_db().jobs.find():
-            removed_job = get_scheduler().remove_job(job['job_id'])
-        deleted_job = get_db().jobs.delete_many({})
-        scheduler.shutdown()
-    except Exception as e:
-        return "NO JOBS TO DELETE.\n{0}".format(e)
-    else:    
-        return "ALL JOBS STOPPED AND DELETED. JOB SCHEDULER HAS STOPPED."
-
 @app.route("/delete_followers/<screen_name>")
 def delete_followers(screen_name):
     try:
@@ -300,21 +288,6 @@ def authorize():
     session['oauth'] = auth.request_token
     return render_template('authorize.html', auth_url=auth_url) 
 
-def start_scheduler():
-    try:
-        scheduler.start(paused=False)
-        scheduler.add_job(
-            func=check_sheet, 
-            trigger="interval", 
-            seconds=30,
-            start_date=datetime.now()
-        )
-    except Exception as e:
-        with app.app_context():
-            app.logger.error(e)
-    finally:
-        return "JOB SCHEDULER RESTARTED"
-
 def check_sheet():
     try:
         app.logger.info("STARTING GOOGLE SHEETS CHECK")
@@ -342,6 +315,31 @@ def check_sheet():
     else:
         app.logger.info("GOOGLE SHEETS CHECK SUCCEEDED")
 
+def start_scheduler():
+    try:
+        scheduler.start(paused=False)
+        scheduler.add_job(
+            func=check_sheet, 
+            trigger="interval", 
+            seconds=30,
+            start_date=datetime.now()
+        )
+    except Exception as e:
+        with app.app_context():
+            app.logger.error(e)
+    finally:
+        return "JOB SCHEDULER RESTARTED"
+
+@app.route("/stop_all")
+def stop_all():
+    try:
+        deleted_job = get_db().jobs.delete_many({})
+        scheduler.shutdown()
+    except Exception as e:
+        return "NO JOBS TO DELETE.\n{0}".format(e)
+    else:    
+        return "ALL JOBS STOPPED AND DELETED. JOB SCHEDULER HAS STOPPED."
+
 # needs to be around 30 seconds otherwise not enough time to complete spreadsheet creation requests
 scheduler.add_job(
     func=check_sheet, 
@@ -356,8 +354,6 @@ def index():
     if request.method == 'POST':
         if request.form['submit_button'] == 'STOP ALL JOBS':
             return stop_all()
-        if request.form['submit_button'] == 'RESTART ALL JOBS':
-            return start_scheduler()
         if request.form['submit_button'] == 'CURRENT JOBS':
             jobs = []
             try:
