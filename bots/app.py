@@ -193,7 +193,8 @@ def start_job(user_id):
                 kwargs={'screen_name': user['screen_name']},
                 trigger='cron', 
                 # day_of_week='mon-fri', 
-                hour='9-20', 
+                # 9 AM to 9 PM
+                hour='9-21', 
                 minute='0-59/2',
                 start_date=datetime.now(timezone('America/New_York')),
                 timezone=timezone('America/New_York'),
@@ -244,8 +245,11 @@ def stop_job(user_id):
 @app.route("/delete_followers/<screen_name>")
 def delete_followers(screen_name):
     try:
+        app.logger.warning('Deleting followers for {0}'.format(screen_name))
         tww = get_tww(screen_name)
         tww.delete_followers(screen_name=screen_name)
+        tww.sheets.update()
+        app.logger.warning('Followers for {0} deleted'.format(screen_name))
     except Exception as e:
         return "User {0} not found.\n{1}".format(screen_name, e)
     else:
@@ -310,6 +314,9 @@ def check_sheet():
                 else:
                     if status == 'start':
                         start_job(user['user_id'])
+                    elif status == 'reset':
+                        stop_job(user['user_id'])
+                        delete_followers(user['screen_name'])
                     else:
                         stop_job(user['user_id'])
             scheduler.print_jobs()
