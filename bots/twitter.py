@@ -95,10 +95,10 @@ class TwitterWrapper(object):
             users = self.db.users.find({'user_id': user_id})
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
-            if script[0]:
+            if script.str.contains('[a-zA-Z0-9]').all():
                 self.db.users.find_one_and_update(
                     filter={'user_id': self.user_id},
-                    update={'$set': {'script': script[0]}}
+                    update={'$set': {'script': script.iat[0]}}
                 )
 
     def construct_ctas(self, client_handle):
@@ -156,7 +156,7 @@ class TwitterWrapper(object):
 
     def filter_inactive(self, client, follower):
         filter_df = self.sheets.get_df()
-        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Account Age (weeks)'][0]
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Account Age (weeks)'].iat[0]
         creation_date_utc = pd.to_datetime(
             follower['created_at'], 
             # "Mon Nov 29 21:18:15 +0000 2010"
@@ -170,22 +170,22 @@ class TwitterWrapper(object):
 
     def filter_status_count(self, client, follower):
         filter_df = self.sheets.get_df()
-        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Posts'][0]
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Posts'].iat[0]
         if follower['statuses_count'] > int(client_filter):
             return True
         return False
 
     def filter_follower_count(self, client, follower):
         filter_df = self.sheets.get_df()
-        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Followers'][0]
+        client_filter = filter_df[filter_df['Handle'] == client]['Minimum Followers'].iat[0]
         if follower['followers_count'] > int(client_filter):
             return True
         return False
 
     def filter_blocked(self, client, follower):
-        blocklist = self.sheets.get_blocklist(client)
         blocked = True
         try:
+            blocklist = self.sheets.get_blocklist(client)
             blocked = blocklist.str.contains(follower['screen_name']).any()
         except Exception as e:
             app.logger.error(e)
