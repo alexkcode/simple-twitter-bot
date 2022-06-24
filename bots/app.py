@@ -298,7 +298,7 @@ def authorize():
 
 def check_sheet():
     try:
-        app.logger.info("STARTING GOOGLE SHEETS CHECK")
+        app.logger.warning("STARTING GOOGLE SHEETS CHECK")
         with app.app_context():
             get_shw().update()
             for user in get_db().users.find():
@@ -324,7 +324,7 @@ def check_sheet():
         app.logger.error("GOOGLE SHEETS CHECK FAILED at {0}".format(datetime.now()))
         raise(e)
     else:
-        app.logger.info("GOOGLE SHEETS CHECK SUCCEEDED")
+        app.logger.warning("GOOGLE SHEETS CHECK SUCCEEDED")
 
 def start_scheduler():
     try:
