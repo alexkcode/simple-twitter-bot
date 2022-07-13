@@ -146,6 +146,7 @@ def job(screen_name):
             app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
             tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
             # tww.delete_followers(user_id=user['user_id'])
+            tww.remove_unfollowed()
             tww.get_new_followers()
             tww.sheets.update()
             tww.generate_dm_text(user['user_id'])
@@ -308,7 +309,7 @@ def check_sheet():
                     app.logger.info('Job status : {0}'.format(status))
                 except Exception as e:
                     app.logger.error(
-                        'Job status for clients not found or no clients found. \n{0}'.format(e)
+                        'Job status for clients not found or no clients found. \n'
                     )
                     stop_job(user['user_id'])
                 else:
