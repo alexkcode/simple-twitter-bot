@@ -76,7 +76,9 @@ class TwitterWrapper(object):
                     },
                     update={
                         '$pull': {
-                            'followers.$.id': stored_follower['id']
+                            'followers': {
+                                'id': stored_follower['id']
+                            }
                         }
                     } 
                 )
