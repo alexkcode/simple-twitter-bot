@@ -162,7 +162,7 @@ def job(screen_name):
     except Exception as e:
         # app.logger.error(e)
         app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
-        app.logger.error(e)
+        app.logger.exception(e)
         raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
