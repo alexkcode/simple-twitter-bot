@@ -95,7 +95,7 @@ class TwitterWrapper(object):
             users = self.db.users.find({'user_id': user_id})
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
-            if script.str.contains('[a-zA-Z0-9]').all():
+            if len(script) > 0 and script.str.contains('[a-zA-Z0-9]').all():
                 self.db.users.find_one_and_update(
                     filter={'user_id': self.user_id},
                     update={'$set': {'script': script.iat[0]}}
@@ -208,7 +208,8 @@ class TwitterWrapper(object):
                     follower['screen_name'], blocked, active, enough_posts, enough_followers
                 ))
                 self.direct_message(self.user_id, follower['id'])
+                app.logger.warning('Message sent to follower: {0}'.format(follower['screen_name']))
             else:
-                app.logger.info(
+                app.logger.warning(
                     'Follower {0} has been messaged, blocked or filtered out.'.format(follower['screen_name'])
                 )
