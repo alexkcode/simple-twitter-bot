@@ -146,9 +146,9 @@ def job(screen_name):
             app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
             tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
             # tww.delete_followers(user_id=user['user_id'])
+            tww.sheets.update()
             tww.remove_unfollowed()
             tww.get_new_followers()
-            tww.sheets.update()
             tww.generate_dm_text(user['user_id'])
             app.logger.debug('Follower IDs for {0}: {1}'.format(
                 user['screen_name'], 
@@ -195,8 +195,8 @@ def start_job(user_id):
                 trigger='cron', 
                 # day_of_week='mon-fri', 
                 # 9 AM to 9 PM
-                hour='9-21', 
-                minute='0-59/2',
+                # hour='9-21', 
+                minute='0-59/4',
                 start_date=datetime.now(timezone('America/New_York')),
                 timezone=timezone('America/New_York'),
                 id=user['screen_name']
