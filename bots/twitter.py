@@ -71,7 +71,7 @@ class TwitterWrapper(object):
             if stored_follower['id_str'] not in current_followers:
                 exists = self.db.users.find_one_and_update(
                     filter={
-                        'user_id': user['user_id'],
+                        'user_id': user_id,
                         'followers.id': {'$eq': stored_follower['id']}
                     },
                     update={
