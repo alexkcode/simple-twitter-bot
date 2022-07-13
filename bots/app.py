@@ -313,7 +313,9 @@ def check_sheet():
                     )
                     stop_job(user['user_id'])
                 else:
-                    if status == 'start':
+                    if status == 'ignore':
+                        app.logger.warning('Ignoring account {0}'.format(user['user_id']))
+                    elif status == 'start':
                         start_job(user['user_id'])
                     elif status == 'reset':
                         stop_job(user['user_id'])
