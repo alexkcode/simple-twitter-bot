@@ -162,7 +162,7 @@ def job(screen_name):
     except Exception as e:
         # app.logger.error(e)
         app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
-        app.logger.exception(e)
+        app.logger.error(e)
         raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
@@ -314,7 +314,7 @@ def check_sheet():
                     stop_job(user['user_id'])
                 else:
                     if status == 'ignore':
-                        app.logger.warning('Ignoring account {0}'.format(user['user_id']))
+                        app.logger.warning('Ignoring account {0}'.format(user['screen_name']))
                     elif status == 'start':
                         start_job(user['user_id'])
                     elif status == 'reset':
