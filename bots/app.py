@@ -175,44 +175,45 @@ def start_job(user_id):
                 'user_id': user_id
             }
         )
-        running_job = get_db().jobs.find_one(
-            filter={
-                'user_id': user_id
-            }
-        )
+        # running_job = get_db().jobs.find_one(
+        #     filter={
+        #         'user_id': user_id
+        #     }
+        # )
+        running_job = scheduler.get_job(user['screen_name'])
         message = ''
         if running_job:
-            message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. \n{1}'.format(
-                user['screen_name'],
+            message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. \n'.format(
                 running_job
             )
-        scheduled_job = scheduler.add_job(
-            func=job, 
-            replace_existing=False,
-            kwargs={'screen_name': user['screen_name']},
-            trigger='cron', 
-            # day_of_week='mon-fri', 
-            # 9 AM to 9 PM
-            hour='9-21', 
-            minute='0-59/2',
-            start_date=datetime.now(timezone('America/New_York')),
-            timezone=timezone('America/New_York'),
-            id=user['screen_name']
-        )
-        app.logger.info('Current jobs: {0}'.format(scheduler.get_jobs()))
-        get_db().jobs.find_one_and_update(
-            filter={
-                'user_id': user_id
-            },
-            update={
-                '$set': {
-                    'user_id': user_id,
-                    'job_id': scheduled_job.id
-                }
-            },
-            upsert=True
-        )
-        message = 'ADDED JOB FOR TWITTER {0}'.format(scheduled_job)
+        else:
+            scheduled_job = scheduler.add_job(
+                func=job, 
+                replace_existing=True,
+                kwargs={'screen_name': user['screen_name']},
+                trigger='cron', 
+                # day_of_week='mon-fri', 
+                # 9 AM to 9 PM
+                hour='9-21', 
+                minute='0-59/2',
+                start_date=datetime.now(timezone('America/New_York')),
+                timezone=timezone('America/New_York'),
+                id=user['screen_name']
+            )
+            app.logger.info('Current jobs: {0}'.format(scheduler.get_jobs()))
+            get_db().jobs.find_one_and_update(
+                filter={
+                    'user_id': user_id
+                },
+                update={
+                    '$set': {
+                        'user_id': user_id,
+                        'job_id': scheduled_job.id
+                    }
+                },
+                upsert=True
+            )
+            message = 'ADDED JOB FOR TWITTER {0}'.format(scheduled_job)
         app.logger.warning(message)
     return message
 
