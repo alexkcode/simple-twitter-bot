@@ -69,11 +69,16 @@ class TwitterWrapper(object):
                 current_followers.append(follower._json['id_str'])
         for stored_follower in stored_followers:
             if stored_follower['id_str'] not in current_followers:
-                exists = self.db.users.find_one_and_delete(
+                exists = self.db.users.find_one_and_update(
                     filter={
-                        'user_id': user_id,
-                        'followers.id': follower.id
-                    }
+                        'user_id': user['user_id'],
+                        'followers.id': {'$eq': stored_follower['id']}
+                    },
+                    update={
+                        '$pull': {
+                            'followers.$.id': stored_follower['id']
+                        }
+                    } 
                 )
                 app.logger.warning('Follower {0} removed.'.format(stored_follower['screen_name']))
 
