@@ -147,8 +147,8 @@ def job(screen_name):
             tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
             # tww.delete_followers(user_id=user['user_id'])
             tww.sheets.update()
-            tww.remove_unfollowed()
             tww.get_new_followers()
+            tww.remove_unfollowed()
             tww.generate_dm_text(user['user_id'])
             app.logger.debug('Follower IDs for {0}: {1}'.format(
                 user['screen_name'], 

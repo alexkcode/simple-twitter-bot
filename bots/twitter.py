@@ -65,25 +65,26 @@ class TwitterWrapper(object):
         current_followers = []
         stored_followers = self.db.users.find_one(filter={'screen_name': handle})
         app.logger.warning(stored_followers)
-        for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
-            for follower in page:
-                current_followers.append(follower._json['id_str'])
-        for stored_follower in stored_followers:
-            if stored_follower['id_str'] not in current_followers:
-                exists = self.db.users.find_one_and_update(
-                    filter={
-                        'user_id': user_id,
-                        'followers.id': {'$eq': stored_follower['id']}
-                    },
-                    update={
-                        '$pull': {
-                            'followers': {
-                                'id': stored_follower['id']
+        if stored_followers or len(stored_followers) > 0:
+            for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
+                for follower in page:
+                    current_followers.append(follower._json['id_str'])
+            for stored_follower in stored_followers:
+                if stored_follower['id_str'] not in current_followers:
+                    exists = self.db.users.find_one_and_update(
+                        filter={
+                            'user_id': user_id,
+                            'followers.id': {'$eq': stored_follower['id']}
+                        },
+                        update={
+                            '$pull': {
+                                'followers': {
+                                    'id': stored_follower['id']
+                                }
                             }
-                        }
-                    } 
-                )
-                app.logger.warning('Follower {0} removed.'.format(stored_follower['screen_name']))
+                        } 
+                    )
+                    app.logger.warning('Follower {0} removed.'.format(stored_follower['screen_name']))
 
     def get_new_followers(self, user_id=None, handle=None) -> None:
         if not user_id:
