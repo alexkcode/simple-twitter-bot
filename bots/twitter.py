@@ -57,13 +57,11 @@ class TwitterWrapper(object):
         except Exception as e:
             raise e
 
-    def remove_unfollowed(self, user_id=None, handle=None) -> None:
+    def remove_unfollowed(self, user_id=None) -> None:
         if not user_id:
             user_id = self.user_id
-        elif handle:
-            user_id = self.db.users.find_one(filter={'screen_name': handle})
         current_followers = []
-        stored_followers = self.db.users.find_one(filter={'screen_name': handle})
+        stored_followers = self.db.users.find_one(filter={'user_id': user_id})
         app.logger.warning(stored_followers)
         if stored_followers or len(stored_followers) > 0:
             for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
@@ -86,11 +84,9 @@ class TwitterWrapper(object):
                     )
                     app.logger.warning('Follower {0} removed.'.format(stored_follower['screen_name']))
 
-    def get_new_followers(self, user_id=None, handle=None) -> None:
+    def get_new_followers(self, user_id=None) -> None:
         if not user_id:
             user_id = self.user_id
-        elif handle:
-            user_id = self.db.users.find_one(filter={'screen_name': handle})
         followers = []
         for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
             for follower in page:
