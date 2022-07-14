@@ -63,7 +63,7 @@ class TwitterWrapper(object):
         current_followers = []
         stored_followers = self.db.users.find_one(filter={'user_id': user_id})
         app.logger.warning(stored_followers)
-        if stored_followers or len(stored_followers) > 0:
+        if stored_followers:
             for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
                 for follower in page:
                     current_followers.append(follower._json['id_str'])
