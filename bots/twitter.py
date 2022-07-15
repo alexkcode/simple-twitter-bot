@@ -62,7 +62,6 @@ class TwitterWrapper(object):
             user_id = self.user_id
         current_followers = []
         stored_followers = self.db.users.find_one(filter={'user_id': user_id})['followers']
-        app.logger.warning(stored_followers)
         if stored_followers:
             for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
                 for follower in page:
