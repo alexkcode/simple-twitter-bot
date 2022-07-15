@@ -256,7 +256,7 @@ def start_job(user_id):
                 },
                 upsert=True
             )
-            message = 'ADDED JOB FOR TWITTER {0}'.format(scheduled_job)
+            message = 'ADDED JOB FOR TWITTER USER {0}: {1}'.format(user['screen_name'], scheduled_job)
         app.logger.warning(message)
     return message
 
