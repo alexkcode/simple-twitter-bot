@@ -210,7 +210,7 @@ def start_job(user_id):
         message = ''
         if running_job:
             message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. \n'.format(
-                running_job
+                user['screen_name']
             )
         else:
             scheduled_job = scheduler.add_job(
