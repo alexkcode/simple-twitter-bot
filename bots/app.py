@@ -1,4 +1,5 @@
 import flask, os, secrets, gspread
+from multiprocessing import Process, Queue
 from datetime import datetime
 from pytz import timezone
 from flask import Flask, request, g, session, render_template, redirect
@@ -31,6 +32,11 @@ def get_scheduler():
     if not 'scheduler' in g:
         g.scheduler = BackgroundScheduler()
     return g.scheduler
+
+def get_follower_job_queue():
+    if not 'follower_job_queue' in g:
+        g.follower_job_queue = Queue()
+    return g.follower_job_queue
 
 def get_db():
     if not 'db' in g:
@@ -144,36 +150,47 @@ def _auth_tww(screen_name):
         api = tweepy.API(auth)
         app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
         tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
-        return tww
+        return tww, user
 
-def refresh_followers(screen_name):
-    tww = _auth_tww(screen_name)
-    tww.sheets.update()
-    tww.get_new_followers()
-    tww.remove_unfollowed()
+def refresh_followers_job(screen_name):
+    try:
+        tww, user = _auth_tww(screen_name)
+        tww.sheets.update()
+        tww.get_new_followers()
+        tww.remove_unfollowed()
+    except Exception as e:
+        app.logger.error("REFRESH FOLLOWER JOB FAILED at {0}".format(datetime.now()))
+        app.logger.exception(e)
+        # raise e
+    else:
+        app.logger.warning("TWITTER JOB FOR {0} SUCCEEDED".format(screen_name))
 
-def job(screen_name):
+def dm_followers_job(screen_name):
     try:
         with app.app_context():
-            app.logger.warning("TWITTER JOB FOR {0} STARTING ...".format(screen_name))
-            user = get_db().users.find_one({'screen_name':screen_name})
-            id = str(user['user_id'])
-            app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
-            auth = tweepy.OAuth1UserHandler(
-                app.config['CONSUMER_KEY'], 
-                app.config['CONSUMER_SECRET'],
-                # Access Token here 
-                user['token'],
-                # Access Token Secret here
-                user['secret']
-            )
-            api = tweepy.API(auth)
-            app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-            tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
+            # app.logger.warning("TWITTER JOB FOR {0} STARTING ...".format(screen_name))
+            # user = get_db().users.find_one({'screen_name':screen_name})
+            # id = str(user['user_id'])
+            # app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
+            # auth = tweepy.OAuth1UserHandler(
+            #     app.config['CONSUMER_KEY'], 
+            #     app.config['CONSUMER_SECRET'],
+            #     # Access Token here 
+            #     user['token'],
+            #     # Access Token Secret here
+            #     user['secret']
+            # )
+            # api = tweepy.API(auth)
+            # app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
+            # tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
+            tww, user = _auth_tww(screen_name)
             # tww.delete_followers(user_id=user['user_id'])
             tww.sheets.update()
-            tww.get_new_followers()
-            tww.remove_unfollowed()
+            # Queue = get_follower_job_queue()
+            # Queue.put(user['screen_name'])
+            refresh_followers_job(screen_name)
+            # tww.get_new_followers()
+            # tww.remove_unfollowed()
             tww.generate_dm_text(user['user_id'])
             app.logger.debug('Follower IDs for {0}: {1}'.format(
                 user['screen_name'], 
@@ -187,8 +204,8 @@ def job(screen_name):
     except Exception as e:
         # app.logger.error(e)
         app.logger.error("TWITTER JOB FAILED at {0}".format(datetime.now()))
-        app.logger.error(e)
-        raise e
+        app.logger.exception(e)
+        # raise e
         # app.logger.info("\n\nAPP TOKEN = %s\n" % app.config['CONSUMER_KEY'])
     else:
         app.logger.warning("TWITTER JOB FOR {0} SUCCEEDED".format(screen_name))
@@ -214,7 +231,7 @@ def start_job(user_id):
             )
         else:
             scheduled_job = scheduler.add_job(
-                func=job, 
+                func=dm_followers_job, 
                 replace_existing=True,
                 kwargs={'screen_name': user['screen_name']},
                 trigger='cron', 
