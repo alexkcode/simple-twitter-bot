@@ -168,29 +168,12 @@ def refresh_followers_job(screen_name):
 def dm_followers_job(screen_name):
     try:
         with app.app_context():
-            # app.logger.warning("TWITTER JOB FOR {0} STARTING ...".format(screen_name))
-            # user = get_db().users.find_one({'screen_name':screen_name})
-            # id = str(user['user_id'])
-            # app.logger.info('Working on {0} : {1}'.format(user['screen_name'], id))
-            # auth = tweepy.OAuth1UserHandler(
-            #     app.config['CONSUMER_KEY'], 
-            #     app.config['CONSUMER_SECRET'],
-            #     # Access Token here 
-            #     user['token'],
-            #     # Access Token Secret here
-            #     user['secret']
-            # )
-            # api = tweepy.API(auth)
-            # app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
-            # tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
             tww, user = _auth_tww(screen_name)
             # tww.delete_followers(user_id=user['user_id'])
             tww.sheets.update()
             # Queue = get_follower_job_queue()
             # Queue.put(user['screen_name'])
             refresh_followers_job(screen_name)
-            # tww.get_new_followers()
-            # tww.remove_unfollowed()
             tww.generate_dm_text(user['user_id'])
             app.logger.debug('Follower IDs for {0}: {1}'.format(
                 user['screen_name'], 
