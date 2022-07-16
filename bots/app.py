@@ -1,6 +1,7 @@
 import flask, os, secrets, gspread
 from multiprocessing import Process, Queue
 from datetime import datetime
+import pytz
 from pytz import timezone
 from flask import Flask, request, g, session, render_template, redirect
 import logging, tweepy
@@ -18,12 +19,32 @@ app = Flask(__name__)
 app.secret_key = secrets.token_urlsafe(16)
 app.config.from_object('config.Config')
 
+class Formatter(logging.Formatter):
+    """override logging.Formatter to use an aware datetime object"""
+
+    def converter(self, timestamp):
+        # Create datetime in UTC
+        dt = datetime.datetime.fromtimestamp(timestamp, tz=pytz.UTC)
+        # Change datetime's timezone
+        return dt.astimezone(pytz.timezone('America/New_York'))
+        
+    def formatTime(self, record, datefmt=None):
+        dt = self.converter(record.created)
+        if datefmt:
+            s = dt.strftime(datefmt)
+        else:
+            try:
+                s = dt.isoformat(timespec='milliseconds')
+            except TypeError:
+                s = dt.isoformat()
+        return s
+
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
 logging.basicConfig(
     level=logging.WARNING, 
-    format=LOG_FORMAT,
+    format=Formatter(LOG_FORMAT),
     datefmt='%m-%d-%y %H:%M:%S',
     handlers=[fh]
 )
@@ -221,7 +242,7 @@ def start_job(user_id):
                 trigger='cron', 
                 # day_of_week='mon-fri', 
                 # 9 AM to 9 PM
-                # hour='9-21', 
+                hour='9-21', 
                 minute='0-59/4',
                 start_date=datetime.now(timezone('America/New_York')),
                 timezone=timezone('America/New_York'),
