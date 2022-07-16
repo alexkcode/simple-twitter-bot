@@ -141,8 +141,6 @@ class SheetsWrapper(object):
         # ws = self.sh.get_worksheet(0)
         # self.update()
         try:
-            if 'TestCon' in handle:
-                app.logger.warning("\nInternal DF: {0}\n".format(self._df[self._df['Handle'] == handle]['Script']))
             return self._df[self._df['Handle'] == handle]['Script']
         except Exception as e:
             self.update()

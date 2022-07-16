@@ -120,11 +120,12 @@ class TwitterWrapper(object):
             users = self.db.users.find({'user_id': user_id})
         for user in users:
             script = self.sheets.get_script(user['screen_name'])
-            if len(script) > 0 and script.str.contains('[a-zA-Z0-9]').all():
-                self.db.users.find_one_and_update(
+            if len(script) > 0:
+                update = self.db.users.find_one_and_update(
                     filter={'user_id': self.user_id},
                     update={'$set': {'script': script.iat[0]}}
                 )
+                app.logger.warning("Script update for {0}: {1}".format(user['screen_name'], update))
 
     def construct_ctas(self, client_handle):
         config_df = self.sheets.get_df()
