@@ -125,7 +125,7 @@ class TwitterWrapper(object):
                     filter={'user_id': self.user_id},
                     update={'$set': {'script': script.iat[0]}}
                 )
-                app.logger.warning("Script update for {0}: {1}".format(user['screen_name'], update))
+                app.logger.debug("Script update for {0}: {1}".format(user['screen_name'], update))
 
     def construct_ctas(self, client_handle):
         config_df = self.sheets.get_df()
@@ -154,8 +154,8 @@ class TwitterWrapper(object):
         if not from_userid:
             from_userid = self.user_id
         # first_name = self.get_username(to_userid).split(' ')[0]
-        self.generate_dm_text(to_userid)
-        user = self.db.users.find_one({'user_id': self.user_id})
+        self.generate_dm_text(from_userid)
+        user = self.db.users.find_one({'user_id': from_userid})
         dm_text = user['script']
         ctas = self.construct_ctas(user['screen_name'])
         try:
