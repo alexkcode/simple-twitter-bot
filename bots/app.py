@@ -42,10 +42,11 @@ class Formatter(logging.Formatter):
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
+fh.setFormatter(Formatter(LOG_FORMAT, '%m-%d-%y %H:%M:%S'))
 logging.basicConfig(
     level=logging.WARNING, 
-    format=Formatter(LOG_FORMAT),
-    datefmt='%m-%d-%y %H:%M:%S',
+    # format=LOG_FORMAT,
+    # datefmt='%m-%d-%y %H:%M:%S',
     handlers=[fh]
 )
 
