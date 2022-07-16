@@ -163,7 +163,7 @@ def refresh_followers_job(screen_name):
         app.logger.exception(e)
         # raise e
     else:
-        app.logger.warning("TWITTER JOB FOR {0} SUCCEEDED".format(screen_name))
+        app.logger.warning("REFRESH FOLLOWERS JOB FOR {0} SUCCEEDED".format(screen_name))
 
 def dm_followers_job(screen_name):
     try:
@@ -209,8 +209,9 @@ def start_job(user_id):
         running_job = scheduler.get_job(user['screen_name'])
         message = ''
         if running_job:
-            message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. \n'.format(
-                user['screen_name']
+            message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. JOB: {1} \n'.format(
+                user['screen_name'],
+                running_job
             )
         else:
             scheduled_job = scheduler.add_job(
