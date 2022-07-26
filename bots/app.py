@@ -169,7 +169,7 @@ def _auth_tww(screen_name):
             # Access Token Secret here
             user['secret']
         )
-        api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, compression=True)
+        api = tweepy.API(auth, wait_on_rate_limit=True)
         app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
         tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
         return tww, user
