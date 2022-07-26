@@ -223,11 +223,6 @@ def start_job(user_id):
                 'user_id': user_id
             }
         )
-        # running_job = get_db().jobs.find_one(
-        #     filter={
-        #         'user_id': user_id
-        #     }
-        # )
         running_job = scheduler.get_job(user['screen_name'])
         message = ''
         if running_job:
@@ -245,7 +240,8 @@ def start_job(user_id):
                 # day_of_week='mon-fri', 
                 # 9 AM to 9 PM
                 hour='9-21', 
-                minute='0-59/15',
+                # minute='0-59/15',
+                minute='0',
                 start_date=datetime.now(timezone('America/New_York')),
                 timezone=timezone('America/New_York'),
                 id=user['screen_name']
