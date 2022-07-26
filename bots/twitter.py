@@ -1,5 +1,5 @@
 from operator import truediv
-import os, json, pytz
+import os, json, pytz, time
 import pandas as pd
 from re import U
 from flask import Flask
@@ -64,9 +64,10 @@ class TwitterWrapper(object):
         stored_account = self.db.users.find_one(filter={'user_id': user_id})
         if 'followers' in stored_account:
             stored_followers = stored_account['followers']
-            for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
-                for follower in page:
-                    current_followers.append(follower._json['id_str'])
+            for page in tweepy.Cursor(self.api.get_follower_ids, user_id=user_id, count=5000).pages():
+                current_followers.extend(page)
+                # for follower in page:
+                #     current_followers.append(follower._json['id_str'])
             for stored_follower in stored_followers:
                 if stored_follower['id_str'] not in current_followers:
                     exists = self.db.users.find_one_and_update(
@@ -88,7 +89,7 @@ class TwitterWrapper(object):
         if not user_id:
             user_id = self.user_id
         followers = []
-        for page in tweepy.Cursor(self.api.get_followers, user_id=user_id).pages():
+        for page in tweepy.Cursor(self.api.get_followers, user_id=user_id, count=5000).pages():
             for follower in page:
                 exists = self._check_follower_exists(user_id, follower)
                 follower_json = follower._json
@@ -103,7 +104,7 @@ class TwitterWrapper(object):
                         },
                         upsert=False
                     )
-        app.logger.info('Got {0} new followers.'.format(len(followers)))
+        app.logger.warning('Got {0} new followers.'.format(len(followers)))
 
     def get_old_followers(self, user_id):
         user = self.db.users.find_one(filter={'user_id': user_id})

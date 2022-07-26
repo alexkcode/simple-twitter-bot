@@ -169,7 +169,7 @@ def _auth_tww(screen_name):
             # Access Token Secret here
             user['secret']
         )
-        api = tweepy.API(auth)
+        api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, compression=True)
         app.logger.info('VERIFIED {0}'.format(api.verify_credentials().id))
         tww = twitter.TwitterWrapper(db=get_db(), api=api, sheets=get_shw(), user_id=api.verify_credentials().id)
         return tww, user
@@ -238,7 +238,8 @@ def start_job(user_id):
         else:
             scheduled_job = scheduler.add_job(
                 func=dm_followers_job, 
-                replace_existing=True,
+                max_instances=1,
+                replace_existing=False,
                 kwargs={'screen_name': user['screen_name']},
                 trigger='cron', 
                 # day_of_week='mon-fri', 
