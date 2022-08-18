@@ -1,5 +1,6 @@
 # Installation and Setup
 
+- Set up a Google Service Account and paste the token json into a json file called `service_account_token.json` in the main code directory
 - Install Docker Compose and related requirements
    - Debian/Ubuntu: https://docs.docker.com/desktop/install/ubuntu/  
    https://www.digitalocean.com/community/tutorial_collections/how-to-install-docker-compose
@@ -40,7 +41,7 @@ __\*\*\*Authorization must be done before any of the bot functions can be used.\
 
 Where `host` represents the IP/domain of the server:
 
-- MongoDB: http://host:27017
+- MongoDB: http://localhost:27017
   - All relevant data should be contained in the `twitter` collection.
-- Server test: http://host:5000
+- Server test: http://localhost:5000
   - Should show `"OK"` if server is active.
