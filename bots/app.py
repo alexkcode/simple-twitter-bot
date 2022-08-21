@@ -353,8 +353,10 @@ def check_sheet():
                     status = get_shw().job_status(user['screen_name']).iat[0]
                     app.logger.info('Job status : {0}'.format(status))
                 except Exception as e:
-                    app.logger.error(
-                        'Job status for clients not found or no clients found. \n'
+                    app.logger.warning(
+                        'Job status for client {0} not found or no clients found. \n'.format(
+                            user['screen_name']
+                        )
                     )
                     stop_job(user['user_id'])
                 else:
