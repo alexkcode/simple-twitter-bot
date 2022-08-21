@@ -66,7 +66,7 @@ class TwitterWrapper(object):
             stored_followers = stored_account['followers']
             for page in tweepy.Cursor(self.api.get_follower_ids, user_id=user_id, count=5000).pages():
                 current_followers.extend(page)
-            app.logger.warning("Current followers: {0}\nStored Followers: {1}".format(current_followers))
+            app.logger.warning("Current followers: {0}\nStored Followers: {1}".format(current_followers, stored_followers))
                 # for follower in page:
                 #     current_followers.append(follower._json['id_str'])
             for stored_follower in stored_followers:
