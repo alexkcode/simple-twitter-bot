@@ -67,23 +67,21 @@ class TwitterWrapper(object):
             for page in tweepy.Cursor(self.api.get_follower_ids, user_id=user_id, count=5000).pages():
                 current_followers.extend(page)
             app.logger.warning("Current followers: {0}\nStored Followers: {1}".format(current_followers, stored_followers))
-                # for follower in page:
-                #     current_followers.append(follower._json['id_str'])
             for stored_follower in stored_followers:
-                if stored_follower['id_str'] not in current_followers:
-                    # exists = self.db.users.find_one_and_update(
-                    #     filter={
-                    #         'user_id': user_id,
-                    #         'followers.id': {'$eq': stored_follower['id']}
-                    #     },
-                    #     update={
-                    #         '$pull': {
-                    #             'followers': {
-                    #                 'id': stored_follower['id']
-                    #             }
-                    #         }
-                    #     } 
-                    # )
+                if stored_follower['id'] not in current_followers:
+                    exists = self.db.users.find_one_and_update(
+                        filter={
+                            'user_id': user_id,
+                            'followers.id': {'$eq': stored_follower['id']}
+                        },
+                        update={
+                            '$pull': {
+                                'followers': {
+                                    'id': stored_follower['id']
+                                }
+                            }
+                        } 
+                    )
                     app.logger.warning('Follower {0} removed.'.format(stored_follower['screen_name']))
 
     def _disaggregate_followers(self, user_id=None) -> None:
