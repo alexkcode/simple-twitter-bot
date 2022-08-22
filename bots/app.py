@@ -232,9 +232,10 @@ def start_job(user_id):
         running_job = scheduler.get_job(user['screen_name'])
         message = ''
         if running_job:
-            message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. JOB: {1} \n'.format(
+            message = 'JOB FOR TWITTER USER {0} EXISTS. JOB WILL NOT BE REPLACED. JOB: {1}. CURRENT TIME: {2}\n'.format(
                 user['screen_name'],
-                running_job
+                running_job,
+                datetime.now(timezone('America/New_York'))
             )
         else:
             scheduled_job = scheduler.add_job(
