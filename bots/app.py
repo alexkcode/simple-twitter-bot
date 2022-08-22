@@ -19,42 +19,36 @@ app = Flask(__name__)
 app.secret_key = secrets.token_urlsafe(16)
 app.config.from_object('config.Config')
 
-class Formatter(logging.Formatter):
-    """override logging.Formatter to use an aware datetime object"""
+# class Formatter(logging.Formatter):
+#     """override logging.Formatter to use an aware datetime object"""
 
-    def converter(self, timestamp):
-        # Create datetime in UTC
-        dt = datetime.datetime.fromtimestamp(timestamp, tz=pytz.UTC)
-        # Change datetime's timezone
-        return dt.astimezone(pytz.timezone('America/New_York'))
+#     def converter(self, timestamp):
+#         # Create datetime in UTC
+#         dt = datetime.datetime.fromtimestamp(timestamp, tz=pytz.UTC)
+#         # Change datetime's timezone
+#         return dt.astimezone(pytz.timezone('America/New_York'))
         
-    def formatTime(self, record, datefmt=None):
-        dt = self.converter(record.created)
-        if datefmt:
-            s = dt.strftime(datefmt)
-        else:
-            try:
-                s = dt.isoformat(timespec='milliseconds')
-            except TypeError:
-                s = dt.isoformat()
-        return s
+#     def formatTime(self, record, datefmt=None):
+#         dt = self.converter(record.created)
+#         if datefmt:
+#             s = dt.strftime(datefmt)
+#         else:
+#             try:
+#                 s = dt.isoformat(timespec='milliseconds')
+#             except TypeError:
+#                 s = dt.isoformat()
+#         return s
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
-# fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
+fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
 # fh.setFormatter(Formatter('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s', '%m-%d-%y %H:%M:%S'))
-# logging.basicConfig(
-#     level=logging.WARNING, 
-#     format=LOG_FORMAT,
-#     datefmt='%m-%d-%y %H:%M:%S %I:%M:%S %p',
-#     handlers=[fh]
-# )
-logger = logging.getLogger(__name__)
-# handler = logging.StreamHandler()
-handler = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1)
-handler.setFormatter(Formatter('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s', '%m-%d-%y %H:%M:%S'))
-logger.addHandler(handler)
-logger.setLevel(logging.WARNING)
+logging.basicConfig(
+    level=logging.WARNING, 
+    format=LOG_FORMAT,
+    datefmt='%m-%d-%y %H:%M:%S %I:%M:%S %p',
+    handlers=[fh]
+)
 
 def get_scheduler():
     if not 'scheduler' in g:
