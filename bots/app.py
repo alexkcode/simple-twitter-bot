@@ -46,7 +46,8 @@ fh = logging.handlers.TimedRotatingFileHandler('error.log', when='D', interval=1
 logging.basicConfig(
     level=logging.WARNING, 
     format=LOG_FORMAT,
-    datefmt='%m-%d-%y %H:%M:%S %I:%M:%S %p',
+    # datefmt='%m-%d-%y %H:%M:%S %I:%M:%S %p',
+    datefmt='%m-%d-%y %I:%M:%S %p',
     handlers=[fh]
 )
 
