@@ -180,7 +180,7 @@ def refresh_followers_job(screen_name):
         tww, user = _auth_tww(screen_name)
         tww.sheets.update()
         tww.get_new_followers()
-        tww.remove_unfollowed()
+        # tww.remove_unfollowed()
     except Exception as e:
         app.logger.error("REFRESH FOLLOWER JOB FAILED at {0}".format(datetime.now()))
         app.logger.exception(e)
